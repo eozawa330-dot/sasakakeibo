@@ -1375,14 +1375,14 @@ function InputTab({ categories, onAdd, receiptTitles={}, setReceipt }) {
         <>
           <div style={{ fontSize:10, color:GRAY, fontWeight:700, letterSpacing:"1.8px", marginBottom:14 }}>カテゴリを選択</div>
           <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:12 }}>
-            {cats.map(cat=><CatCard key={cat.id} cat={cat} onClick={()=>{setSelectedCat(cat);setStep("amount");}}/>)}
+            {cats.filter(cat=>cat&&cat.id&&cat.name).map(cat=><CatCard key={cat.id} cat={cat} onClick={()=>{setSelectedCat(cat);setStep("amount");}}/>)}
           </div>
         </>
-      ) : (
+      ) : !selectedCat ? null : (
         <>
           <button onClick={()=>setStep("category")} style={{ background:"none", border:"none", color:GRAY, fontSize:13, cursor:"pointer", marginBottom:6, padding:0, fontWeight:600, fontFamily:FONT }}>← 戻る</button>
           <div style={{ ...neuCard, padding:"8px 14px", marginBottom:6, display:"flex", alignItems:"center", gap:12, borderRadius:16 }}>
-            <div style={{ width:44, height:44, borderRadius:14, background:selectedCat.color+"1A", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:`3px 3px 8px rgba(163,177,198,0.4),-3px -3px 8px rgba(255,255,255,0.9)` }}>
+            <div style={{ width:44, height:44, borderRadius:14, background:(selectedCat.color||"#94A3B8")+"1A", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:`3px 3px 8px rgba(163,177,198,0.4),-3px -3px 8px rgba(255,255,255,0.9)` }}>
               <Icon3D type={selectedCat.icon||"star"} size={30}/>
             </div>
             <div>
@@ -2118,12 +2118,13 @@ export default function App() {
   const [receipt, setReceipt] = useState(null);
 
   // ── カテゴリバージョン：変更時にlocalStorageを強制リセット ──────────
-  const CATEGORY_VERSION = "v5-ema"; // categories updated
+  const CATEGORY_VERSION = "v6-ema"; // categories updated
  // ← カテゴリ変更のたびに番号を上げる
   const storedVersion = (() => { try { return localStorage.getItem("kakeibo_cat_version"); } catch { return null; } })();
   if (storedVersion !== CATEGORY_VERSION) {
     try {
       localStorage.removeItem("kakeibo_categories");
+      localStorage.removeItem("kakeibo_records"); // 古いマイナス金額レコードもリセット
       localStorage.setItem("kakeibo_cat_version", CATEGORY_VERSION);
     } catch {}
   }
