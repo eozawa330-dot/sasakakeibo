@@ -1,24 +1,19 @@
 import { useState, useCallback, useEffect, useRef } from "react";
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
 
 // ─── Fonts ────────────────────────────────────────────────────────────────
-// Futura PT Book (英数字) + Hiragino Sans W4 (日本語)
-// Futura PT は Adobe Fonts / ローカル環境依存のため @font-face で優先指定
-const FONT_STYLE = document.createElement("style");
-FONT_STYLE.textContent = `
-  input::placeholder { color: rgba(255,255,255,0.4) !important; }
-  input { caret-color: white !important; }
-
-  @import url('https://fonts.cdnfonts.com/css/futura-pt');
-  :root {
-    --font-main: 'Futura PT', 'Futura', 'Century Gothic', '-apple-system', sans-serif;
-  }
-  * {
-    font-family: 'Futura PT', 'Futura', 'Century Gothic', 'Hiragino Sans', 'ヒラギノ角ゴ ProN W4', 'Hiragino Kaku Gothic ProN', sans-serif !important;
-  }
-`;
-document.head.appendChild(FONT_STYLE);
-const FONT = "'Futura PT','Futura','Century Gothic','Hiragino Sans','ヒラギノ角ゴ ProN W4','Hiragino Kaku Gothic ProN',sans-serif";
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
+const FONT = "'Futura PT','Futura','Century Gothic','Hiragino Sans',sans-serif";
+// Font injection (runs once at module init in Vite, deferred in artifact)
+if (typeof document !== "undefined") {
+  const FONT_STYLE = document.createElement("style");
+  FONT_STYLE.textContent = [
+    "@import url('https://fonts.cdnfonts.com/css/futura-pt');",
+    "input::placeholder{color:rgba(100,116,139,0.5)!important}",
+    "input{caret-color:#334155!important}",
+    "*{font-family:'Futura PT','Futura','Century Gothic','Hiragino Sans',sans-serif!important}",
+  ].join("");
+  document.head.appendChild(FONT_STYLE);
+}
 
 // ─── Design Tokens ─────────────────────────────────────────────────────────
 // White/grey base, holographic accent (reference: White Payments UI)
@@ -2153,6 +2148,14 @@ export default function App() {
   const [splashDone, setSplashDone] = useState(false);
   const [tab,        setTab]        = useState("input");
   const [monthKey,   setMonthKey]   = useState(currentMonthKey());
+
+  // ── レシートタイトル（カスタム） ──────────────────────────────────────
+  const [receiptTitles, setReceiptTitles] = useState(()=>{
+    try { const s=localStorage.getItem("kakeibo_receipt_titles"); return s?JSON.parse(s):{}; } catch{ return {}; }
+  });
+  useEffect(()=>{
+    try{ localStorage.setItem("kakeibo_receipt_titles", JSON.stringify(receiptTitles)); }catch{}
+  },[receiptTitles]);
 
   // ── カテゴリバージョン：変更時にlocalStorageを強制リセット ──────────
   const CATEGORY_VERSION = "v5-ema"; // categories updated
