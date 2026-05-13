@@ -1,19 +1,24 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
 
 // ─── Fonts ────────────────────────────────────────────────────────────────
-const FONT = "'Futura PT','Futura','Century Gothic','Hiragino Sans',sans-serif";
-// Font injection (runs once at module init in Vite, deferred in artifact)
-if (typeof document !== "undefined") {
-  const FONT_STYLE = document.createElement("style");
-  FONT_STYLE.textContent = [
-    "@import url('https://fonts.cdnfonts.com/css/futura-pt');",
-    "input::placeholder{color:rgba(100,116,139,0.5)!important}",
-    "input{caret-color:#334155!important}",
-    "*{font-family:'Futura PT','Futura','Century Gothic','Hiragino Sans',sans-serif!important}",
-  ].join("");
-  document.head.appendChild(FONT_STYLE);
-}
+// Futura PT Book (英数字) + Hiragino Sans W4 (日本語)
+// Futura PT は Adobe Fonts / ローカル環境依存のため @font-face で優先指定
+const FONT_STYLE = document.createElement("style");
+FONT_STYLE.textContent = `
+  input::placeholder { color: rgba(255,255,255,0.4) !important; }
+  input { caret-color: white !important; }
+
+  @import url('https://fonts.cdnfonts.com/css/futura-pt');
+  :root {
+    --font-main: 'Futura PT', 'Futura', 'Century Gothic', '-apple-system', sans-serif;
+  }
+  * {
+    font-family: 'Futura PT', 'Futura', 'Century Gothic', 'Hiragino Sans', 'ヒラギノ角ゴ ProN W4', 'Hiragino Kaku Gothic ProN', sans-serif !important;
+  }
+`;
+document.head.appendChild(FONT_STYLE);
+const FONT = "'Futura PT','Futura','Century Gothic','Hiragino Sans','ヒラギノ角ゴ ProN W4','Hiragino Kaku Gothic ProN',sans-serif";
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
 
 // ─── Design Tokens ─────────────────────────────────────────────────────────
 // White/grey base, holographic accent (reference: White Payments UI)
@@ -1170,7 +1175,7 @@ function Splash({ onDone }) {
 
 
 // ─── Receipt Modal ────────────────────────────────────────────────────────────
-function ReceiptModal({ record, catName, catIcon, onClose, customTitle }) {
+function ReceiptModal({ record, catName, catIcon, onClose }) {
   const bg = getReceiptBg(catName);
   const [visible, setVisible] = useState(false);
   useEffect(()=>{ setTimeout(()=>setVisible(true),30); },[]);
@@ -1183,7 +1188,7 @@ function ReceiptModal({ record, catName, catIcon, onClose, customTitle }) {
   const dateLabel = `${parseInt(day)} ${months[parseInt(month)-1]} ${year}`;
   const receiptNo = "#"+year+month+day+"-"+barcodeVal.slice(0,4);
   const isIncome = record.type==="income";
-  const titleEn = customTitle || getCatEn(catName);
+  const titleEn = getCatEn(catName);
 
   // SVG barcode (simple visual bars)
   const bars = Array.from({length:52},(_,i)=>{
@@ -1316,14 +1321,14 @@ function ReceiptModal({ record, catName, catIcon, onClose, customTitle }) {
   );
 }
 // ─── Input Tab ──────────────────────────────────────────────────────────────
-function InputTab({ categories, onAdd, receiptTitles={}, setReceipt }) {
+function InputTab({ categories, onAdd }) {
   const [mode, setMode]             = useState("expense");
   const [expenseType, setExpenseType] = useState("fixed");
   const [selectedCat, setSelectedCat] = useState(null);
   const [step, setStep]             = useState("category");
   const [memo, setMemo]             = useState("");
   const [toast, setToast]           = useState(null);
- // {record, catName, catIcon}
+  const [receipt, setReceipt]       = useState(null); // {record, catName, catIcon}
 
   const cats = mode==="income" ? categories.income : expenseType==="fixed" ? categories.fixed : categories.variable;
 
@@ -1331,8 +1336,7 @@ function InputTab({ categories, onAdd, receiptTitles={}, setReceipt }) {
 
   const handleConfirm = amount => {
     const today=new Date();
-    const todayStr=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
-    const date = customDate || todayStr;
+    const date=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
     // 控除・ふるさと納税はsubtractFromIncome=trueなのでマイナス金額で保存
     const allIncomeCats = categories.income;
     const catDef = allIncomeCats.find(ct=>ct.id===selectedCat.id);
@@ -1342,14 +1346,20 @@ function InputTab({ categories, onAdd, receiptTitles={}, setReceipt }) {
     const finalAmount = Math.abs(amount); // 常に正の値で保存
     const newRecord = { id:"r"+Date.now(), type:recordType, categoryId:selectedCat.id, amount:finalAmount, date, memo };
     onAdd(newRecord);
-    const customTitle = receiptTitles[selectedCat.name]||(CAT_EN[selectedCat.name]||selectedCat.name.toUpperCase());
-    setReceipt({ record:newRecord, catName:selectedCat.name, catIcon:selectedCat.icon||"star", customTitle });
-    setStep("category"); setSelectedCat(null); setMemo(""); setCustomDate("");
+    setReceipt({ record:newRecord, catName:selectedCat.name, catIcon:selectedCat.icon||"star" });
+    setStep("category"); setSelectedCat(null); setMemo("");
   };
 
   return (
     <div style={{ paddingBottom:120 }}>
-
+      {receipt && (
+        <ReceiptModal
+          record={receipt.record}
+          catName={receipt.catName}
+          catIcon={receipt.catIcon}
+          onClose={()=>setReceipt(null)}
+        />
+      )}
       {toast && (
         <div style={{ position:"fixed", top:24, left:"50%", transform:"translateX(-50%)", background:"linear-gradient(135deg, rgba(167,139,250,0.95), rgba(45,212,191,0.95))", backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)", color:DARK, borderRadius:99, padding:"12px 24px", fontSize:14, fontWeight:700, zIndex:999, whiteSpace:"nowrap", boxShadow:neuShadow(8) }}>
           {toast}
@@ -1375,14 +1385,14 @@ function InputTab({ categories, onAdd, receiptTitles={}, setReceipt }) {
         <>
           <div style={{ fontSize:10, color:GRAY, fontWeight:700, letterSpacing:"1.8px", marginBottom:14 }}>カテゴリを選択</div>
           <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:12 }}>
-            {cats.filter(cat=>cat&&cat.id&&cat.name).map(cat=><CatCard key={cat.id} cat={cat} onClick={()=>{setSelectedCat(cat);setStep("amount");}}/>)}
+            {cats.map(cat=><CatCard key={cat.id} cat={cat} onClick={()=>{setSelectedCat(cat);setStep("amount");}}/>)}
           </div>
         </>
-      ) : !selectedCat ? null : (
+      ) : (
         <>
           <button onClick={()=>setStep("category")} style={{ background:"none", border:"none", color:GRAY, fontSize:13, cursor:"pointer", marginBottom:6, padding:0, fontWeight:600, fontFamily:FONT }}>← 戻る</button>
           <div style={{ ...neuCard, padding:"8px 14px", marginBottom:6, display:"flex", alignItems:"center", gap:12, borderRadius:16 }}>
-            <div style={{ width:44, height:44, borderRadius:14, background:(selectedCat.color||"#94A3B8")+"1A", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:`3px 3px 8px rgba(163,177,198,0.4),-3px -3px 8px rgba(255,255,255,0.9)` }}>
+            <div style={{ width:44, height:44, borderRadius:14, background:selectedCat.color+"1A", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:`3px 3px 8px rgba(163,177,198,0.4),-3px -3px 8px rgba(255,255,255,0.9)` }}>
               <Icon3D type={selectedCat.icon||"star"} size={30}/>
             </div>
             <div>
@@ -1390,15 +1400,8 @@ function InputTab({ categories, onAdd, receiptTitles={}, setReceipt }) {
               <div style={{ fontSize:16, fontWeight:800, color:DARK }}>{selectedCat.name}</div>
             </div>
           </div>
-          <div style={{ display:"flex", gap:6, marginBottom:4 }}>
-            <div style={{ ...neuInset(4), borderRadius:12, padding:"1px 4px", flex:1 }}>
-              <input placeholder="メモ（任意）" value={memo} onChange={e=>setMemo(e.target.value)} style={{ width:"100%", padding:"8px 12px", background:"none", border:"none", outline:"none", fontSize:13, color:DARK, fontFamily:FONT, boxSizing:"border-box" }}/>
-            </div>
-            <div style={{ ...neuInset(4), borderRadius:12, padding:"1px 4px" }}>
-              <input type="date" value={customDate} onChange={e=>setCustomDate(e.target.value)}
-                style={{ padding:"8px 10px", background:"none", border:"none", outline:"none", fontSize:12, color:customDate?DARK:GRAY, fontFamily:FONT, cursor:"pointer", width:130 }}
-              />
-            </div>
+          <div style={{ ...neuInset(4), borderRadius:12, padding:"1px 4px", marginBottom:4 }}>
+            <input placeholder="メモ（任意）" value={memo} onChange={e=>setMemo(e.target.value)} style={{ width:"100%", padding:"8px 12px", background:"none", border:"none", outline:"none", fontSize:13, color:DARK, fontFamily:FONT, boxSizing:"border-box" }}/>
           </div>
           <Calculator onConfirm={handleConfirm}/>
         </>
@@ -1856,71 +1859,60 @@ function ReportTab({ records, categories, monthKey, onMonthChange }) {
         )}
       </div>
 
-      {/* ── ウォーターフォール Card ── */}
+      {/* ── ウィークリー集計 Card ── */}
       <div style={{ ...neuCard, padding:"22px 20px 18px" }}>
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:18 }}>
-          <div>
-            <div style={{ fontSize:14, fontWeight:800, color:DARKER }}>収支ウォーターフォール</div>
-            <div style={{ fontSize:10, color:GRAY, fontWeight:600, letterSpacing:"0.5px", marginTop:2 }}>INCOME · EXPENSE · BALANCE</div>
-          </div>
+        <div style={{ marginBottom:16 }}>
+          <div style={{ fontSize:14, fontWeight:800, color:DARKER, letterSpacing:"-0.2px" }}>週次集計</div>
+          <div style={{ fontSize:10, color:GRAY, fontWeight:600, letterSpacing:"0.5px", marginTop:2 }}>WEEKLY SUMMARY</div>
         </div>
-        {(()=>{
-          const fixedAmt   = monthRecs.filter(r=>r.type==="fixed").reduce((s,r)=>s+r.amount,0);
-          const varAmt     = monthRecs.filter(r=>r.type==="variable").reduce((s,r)=>s+r.amount,0);
-          const wfItems = [
-            { label:"収入",  value:totalIncome, color:"#059669", sign:"+" },
-            { label:"固定費", value:fixedAmt,   color:PINK,      sign:"-" },
-            { label:"変動費", value:varAmt,      color:"#F97316", sign:"-" },
-            { label:"収支",  value:Math.abs(balance), color:balance>=0?"#059669":PINK, sign:balance>=0?"±":"-" },
-          ];
-          const maxVal = Math.max(totalIncome, fixedAmt, varAmt, Math.abs(balance), 1);
-          const BAR_H  = 120;
-          return (
-            <div>
-              {/* バーグラフエリア */}
-              <div style={{ display:"flex", alignItems:"flex-end", gap:8, height:BAR_H+40, padding:"0 4px", position:"relative" }}>
-                {/* ゼロライン */}
-                <div style={{ position:"absolute", bottom:32, left:0, right:0, height:1, background:"rgba(180,190,220,0.5)", borderTop:"1px dashed rgba(180,190,220,0.6)" }}/>
-                {wfItems.map((d,i)=>{
-                  const h = Math.max(Math.round(d.value/maxVal*BAR_H), 4);
-                  return (
-                    <div key={d.label} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}>
-                      {/* 金額 */}
-                      <div style={{ fontSize:9, fontWeight:800, color:d.color, whiteSpace:"nowrap" }}>
-                        ¥{d.value.toLocaleString()}
-                      </div>
-                      {/* バー */}
-                      <div style={{
-                        width:"100%", height:h, borderRadius:"6px 6px 3px 3px",
-                        background:`linear-gradient(180deg,${d.color}bb,${d.color})`,
-                        boxShadow:`0 2px 8px ${d.color}44`,
-                        position:"relative", overflow:"hidden",
-                      }}>
-                        <div style={{ position:"absolute",top:0,left:0,right:0,height:"30%",background:"rgba(255,255,255,0.25)",borderRadius:"6px 6px 0 0" }}/>
-                      </div>
-                      {/* ラベル */}
-                      <div style={{ fontSize:10, fontWeight:700, color:GRAY, textAlign:"center" }}>{d.label}</div>
-                      {/* 金額下 */}
-                      <div style={{ fontSize:10, fontWeight:800, color:d.color, textAlign:"center" }}>
-                        {d.sign}{fmt(d.value).replace("¥","")}<span style={{fontSize:8}}>円</span>
-                      </div>
+        <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+          {weeks.map(w=>(
+            <div key={w.num} style={{
+              borderRadius:16, padding:"14px 16px",
+              background:"linear-gradient(135deg,#F8F6FF,#F0F8FF)",
+              border:"1px solid rgba(200,210,230,0.5)",
+            }}>
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
+                <div>
+                  <span style={{ fontSize:11, fontWeight:800, color:TEAL2 }}>第{w.num}週</span>
+                  <span style={{ fontSize:10, color:GRAY, marginLeft:6 }}>{month}/{w.start} 〜 {month}/{w.end}</span>
+                </div>
+                <div style={{ textAlign:"right" }}>
+                  {w.income>0 && <div style={{ fontSize:11, color:"#059669", fontWeight:700 }}>+{fmt(w.income)}</div>}
+                  <div style={{ fontSize:13, fontWeight:800, color:PINK }}>−{fmt(w.expense)}</div>
+                </div>
+              </div>
+              {/* 週内カテゴリトップ3 */}
+              {w.cats.length>0 && (
+                <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+                  {w.cats.map(cat=>(
+                    <div key={cat.id} style={{
+                      display:"flex", alignItems:"center", gap:5,
+                      background:cat.color+"18", borderRadius:99, padding:"4px 10px",
+                    }}>
+                      <Icon3D type={cat.icon||"star"} size={14}/>
+                      <span style={{ fontSize:10, fontWeight:700, color:DARK }}>{cat.name}</span>
+                      <span style={{ fontSize:10, color:cat.color, fontWeight:800 }}>{fmt(cat.amount)}</span>
                     </div>
-                  );
-                })}
-              </div>
-              {/* 凡例 */}
-              <div style={{ display:"flex", gap:12, justifyContent:"center", marginTop:12, flexWrap:"wrap" }}>
-                {[{c:"#059669",l:"収入"},{c:PINK,l:"固定費"},{c:"#F97316",l:"変動費"},{c:balance>=0?"#059669":PINK,l:"収支"}].map(d=>(
-                  <div key={d.l} style={{ display:"flex", alignItems:"center", gap:4 }}>
-                    <div style={{ width:10,height:10,borderRadius:3,background:d.c }}/>
-                    <span style={{ fontSize:10,color:GRAY,fontWeight:600 }}>{d.l}</span>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
+              {/* 週次バー */}
+              {w.expense>0 && (
+                <div style={{ marginTop:10, borderRadius:99, height:5, background:"rgba(200,210,230,0.3)", overflow:"hidden" }}>
+                  <div style={{
+                    height:"100%", borderRadius:99,
+                    background:`linear-gradient(90deg,${PINK}66,${PINK})`,
+                    width:`${Math.min(100,Math.round(w.expense/totalExpense*100))}%`,
+                    transition:"width 0.8s ease",
+                  }}/>
+                </div>
+              )}
             </div>
-          );
-        })()}
+          ))}
+        </div>
       </div>
+
     </div>
   );
 }
@@ -1968,7 +1960,7 @@ function HistoryTab({ records, categories, monthKey, onDelete }) {
 }
 
 // ─── Settings Tab ────────────────────────────────────────────────────────────
-function SettingsTab({ categories, setCategories, receiptTitles, setReceiptTitles }) {
+function SettingsTab({ categories, setCategories }) {
   const [editingGroup, setEditingGroup] = useState(null);
   const [editingCat,   setEditingCat]   = useState(null); // {gkey, cat} for icon edit
   const [newName,      setNewName]      = useState("");
@@ -2033,33 +2025,6 @@ function SettingsTab({ categories, setCategories, receiptTitles, setReceiptTitle
         </div>
       )}
 
-      {/* ── レシートタイトル設定 ── */}
-      <div style={{ ...neuCard, marginBottom:16, padding:"20px" }}>
-        <div style={{ fontSize:11, fontWeight:700, color:GRAY, marginBottom:6, letterSpacing:"1px" }}>レシートタイトル設定</div>
-        <div style={{ fontSize:10, color:GRAY_L, marginBottom:14 }}>カテゴリごとにレシート上部のタイトルを設定できます</div>
-        <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-          {[...categories.income,...categories.fixed,...categories.variable].map(cat=>{
-            const current = receiptTitles[cat.name] || getCatEn(cat.name);
-            return (
-              <div key={cat.id} style={{ display:"flex", alignItems:"center", gap:10 }}>
-                <div style={{ width:32, height:32, borderRadius:10, background:cat.color+"1A", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                  <Icon3D type={cat.icon||"star"} size={20}/>
-                </div>
-                <div style={{ fontSize:12, fontWeight:600, color:DARK, width:64, flexShrink:0 }}>{cat.name}</div>
-                <div style={{ ...neuInset(3), borderRadius:10, flex:1, padding:"1px 4px" }}>
-                  <input
-                    value={receiptTitles[cat.name]||""}
-                    onChange={e=>setReceiptTitles(prev=>({...prev,[cat.name]:e.target.value}))}
-                    placeholder={getCatEn(cat.name)}
-                    style={{ width:"100%", padding:"7px 10px", background:"none", border:"none", outline:"none", fontSize:12, color:DARK, fontFamily:FONT, boxSizing:"border-box" }}
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
       {groups.map(({key,label})=>(
         <div key={key} style={{ ...neuCard, marginBottom:16, padding:"20px" }}>
           <div style={{ fontSize:11, fontWeight:700, color:GRAY, marginBottom:14, letterSpacing:"1px" }}>{label}</div>
@@ -2107,24 +2072,13 @@ export default function App() {
   const [tab,        setTab]        = useState("input");
   const [monthKey,   setMonthKey]   = useState(currentMonthKey());
 
-  // ── レシートタイトル（カスタム） ──────────────────────────────────────
-  const [receiptTitles, setReceiptTitles] = useState(()=>{
-    try { const s=localStorage.getItem("kakeibo_receipt_titles"); return s?JSON.parse(s):{}; } catch{ return {}; }
-  });
-  useEffect(()=>{
-    try{ localStorage.setItem("kakeibo_receipt_titles", JSON.stringify(receiptTitles)); }catch{}
-  },[receiptTitles]);
-
-  const [receipt, setReceipt] = useState(null);
-
   // ── カテゴリバージョン：変更時にlocalStorageを強制リセット ──────────
-  const CATEGORY_VERSION = "v6-ema"; // categories updated
+  const CATEGORY_VERSION = "v5-sasami"; // categories updated
  // ← カテゴリ変更のたびに番号を上げる
   const storedVersion = (() => { try { return localStorage.getItem("kakeibo_cat_version"); } catch { return null; } })();
   if (storedVersion !== CATEGORY_VERSION) {
     try {
       localStorage.removeItem("kakeibo_categories");
-      localStorage.removeItem("kakeibo_records"); // 古いマイナス金額レコードもリセット
       localStorage.setItem("kakeibo_cat_version", CATEGORY_VERSION);
     } catch {}
   }
@@ -2180,17 +2134,6 @@ export default function App() {
 
       {!splashDone && <Splash onDone={()=>setSplashDone(true)}/>}
 
-      {/* Receipt Modal — App level so it persists across tab switches */}
-      {receipt && (
-        <ReceiptModal
-          record={receipt.record}
-          catName={receipt.catName}
-          catIcon={receipt.catIcon}
-          customTitle={receipt.customTitle}
-          onClose={()=>setReceipt(null)}
-        />
-      )}
-
       {/* Month header (only on report/history) */}
       {(tab==="report"||tab==="history") && (
         <div style={{ background:"rgba(240,242,250,0.9)", backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)", borderBottom:"1px solid rgba(255,255,255,0.9)", padding:"20px 24px 14px", position:"sticky", top:0, zIndex:100 }}>
@@ -2200,10 +2143,10 @@ export default function App() {
 
       {/* Content */}
       <div style={{ position:"relative", zIndex:1, padding:"20px 20px 0" }}>
-        {tab==="input"    && <InputTab    categories={categories} onAdd={addRecord} receiptTitles={receiptTitles} setReceipt={setReceipt}/>}
+        {tab==="input"    && <InputTab    categories={categories} onAdd={addRecord}/>}
         {tab==="report"   && <ReportTab   records={records} categories={categories} monthKey={monthKey} onMonthChange={setMonthKey}/>}
         {tab==="history"  && <HistoryTab  records={records} categories={categories} monthKey={monthKey} onDelete={deleteRecord}/>}
-        {tab==="settings" && <SettingsTab categories={categories} setCategories={setCategories} receiptTitles={receiptTitles} setReceiptTitles={setReceiptTitles}/>}
+        {tab==="settings" && <SettingsTab categories={categories} setCategories={setCategories}/>}
       </div>
 
       {/* Bottom nav — frosted glass */}
