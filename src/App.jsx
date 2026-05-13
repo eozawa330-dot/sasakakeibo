@@ -1327,6 +1327,7 @@ function InputTab({ categories, onAdd }) {
   const [selectedCat, setSelectedCat] = useState(null);
   const [step, setStep]             = useState("category");
   const [memo, setMemo]             = useState("");
+  const [customDate, setCustomDate] = useState("");
   const [toast, setToast]           = useState(null);
   const [receipt, setReceipt]       = useState(null); // {record, catName, catIcon}
 
@@ -1336,7 +1337,8 @@ function InputTab({ categories, onAdd }) {
 
   const handleConfirm = amount => {
     const today=new Date();
-    const date=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
+    const todayStr=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
+    const date = customDate || todayStr;
     // 控除・ふるさと納税はsubtractFromIncome=trueなのでマイナス金額で保存
     const allIncomeCats = categories.income;
     const catDef = allIncomeCats.find(ct=>ct.id===selectedCat.id);
@@ -1347,7 +1349,7 @@ function InputTab({ categories, onAdd }) {
     const newRecord = { id:"r"+Date.now(), type:recordType, categoryId:selectedCat.id, amount:finalAmount, date, memo };
     onAdd(newRecord);
     setReceipt({ record:newRecord, catName:selectedCat.name, catIcon:selectedCat.icon||"star" });
-    setStep("category"); setSelectedCat(null); setMemo("");
+    setStep("category"); setSelectedCat(null); setMemo(""); setCustomDate("");
   };
 
   return (
@@ -1400,8 +1402,17 @@ function InputTab({ categories, onAdd }) {
               <div style={{ fontSize:16, fontWeight:800, color:DARK }}>{selectedCat.name}</div>
             </div>
           </div>
-          <div style={{ ...neuInset(4), borderRadius:12, padding:"1px 4px", marginBottom:4 }}>
-            <input placeholder="メモ（任意）" value={memo} onChange={e=>setMemo(e.target.value)} style={{ width:"100%", padding:"8px 12px", background:"none", border:"none", outline:"none", fontSize:13, color:DARK, fontFamily:FONT, boxSizing:"border-box" }}/>
+          <div style={{ display:"flex", gap:6, marginBottom:4 }}>
+            {/* メモ */}
+            <div style={{ ...neuInset(4), borderRadius:12, padding:"1px 4px", flex:1 }}>
+              <input placeholder="メモ（任意）" value={memo} onChange={e=>setMemo(e.target.value)} style={{ width:"100%", padding:"8px 10px", background:"none", border:"none", outline:"none", fontSize:13, color:DARK, fontFamily:FONT, boxSizing:"border-box" }}/>
+            </div>
+            {/* 日付 */}
+            <div style={{ ...neuInset(4), borderRadius:12, padding:"1px 4px", display:"flex", alignItems:"center" }}>
+              <input type="date" value={customDate} onChange={e=>setCustomDate(e.target.value)}
+                style={{ padding:"8px 8px", background:"none", border:"none", outline:"none", fontSize:12, color:customDate?DARK:GRAY, fontFamily:FONT, cursor:"pointer", width:122 }}
+              />
+            </div>
           </div>
           <Calculator onConfirm={handleConfirm}/>
         </>
