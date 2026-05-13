@@ -1316,14 +1316,14 @@ function ReceiptModal({ record, catName, catIcon, onClose, customTitle }) {
   );
 }
 // ─── Input Tab ──────────────────────────────────────────────────────────────
-function InputTab({ categories, onAdd, receiptTitles={} }) {
+function InputTab({ categories, onAdd, receiptTitles={}, setReceipt }) {
   const [mode, setMode]             = useState("expense");
   const [expenseType, setExpenseType] = useState("fixed");
   const [selectedCat, setSelectedCat] = useState(null);
   const [step, setStep]             = useState("category");
   const [memo, setMemo]             = useState("");
   const [toast, setToast]           = useState(null);
-  const [receipt, setReceipt]       = useState(null); // {record, catName, catIcon}
+ // {record, catName, catIcon}
 
   const cats = mode==="income" ? categories.income : expenseType==="fixed" ? categories.fixed : categories.variable;
 
@@ -1349,15 +1349,7 @@ function InputTab({ categories, onAdd, receiptTitles={} }) {
 
   return (
     <div style={{ paddingBottom:120 }}>
-      {receipt && (
-        <ReceiptModal
-          record={receipt.record}
-          catName={receipt.catName}
-          catIcon={receipt.catIcon}
-          customTitle={receipt.customTitle}
-          onClose={()=>setReceipt(null)}
-        />
-      )}
+
       {toast && (
         <div style={{ position:"fixed", top:24, left:"50%", transform:"translateX(-50%)", background:"linear-gradient(135deg, rgba(167,139,250,0.95), rgba(45,212,191,0.95))", backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)", color:DARK, borderRadius:99, padding:"12px 24px", fontSize:14, fontWeight:700, zIndex:999, whiteSpace:"nowrap", boxShadow:neuShadow(8) }}>
           {toast}
@@ -1868,93 +1860,60 @@ function ReportTab({ records, categories, monthKey, onMonthChange }) {
       <div style={{ ...neuCard, padding:"22px 20px 18px" }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:18 }}>
           <div>
-            <div style={{ fontSize:14, fontWeight:800, color:DARKER, letterSpacing:"-0.2px" }}>収支ウォーターフォール</div>
+            <div style={{ fontSize:14, fontWeight:800, color:DARKER }}>収支ウォーターフォール</div>
             <div style={{ fontSize:10, color:GRAY, fontWeight:600, letterSpacing:"0.5px", marginTop:2 }}>INCOME · EXPENSE · BALANCE</div>
           </div>
         </div>
-        {(() => {
-          // ウォーターフォールデータ構築
-          const wfData = [
-            { label:"収入", value:totalIncome,   type:"income",  color:"#059669" },
-            { label:"固定費",value:monthRecs.filter(r=>r.type==="fixed").reduce((s,r)=>s+r.amount,0),    type:"expense", color:PINK },
-            { label:"変動費",value:monthRecs.filter(r=>r.type==="variable").reduce((s,r)=>s+r.amount,0), type:"expense", color:"#F97316" },
-            { label:"収支",  value:balance,       type:"balance", color:balance>=0?"#059669":PINK },
+        {(()=>{
+          const fixedAmt   = monthRecs.filter(r=>r.type==="fixed").reduce((s,r)=>s+r.amount,0);
+          const varAmt     = monthRecs.filter(r=>r.type==="variable").reduce((s,r)=>s+r.amount,0);
+          const wfItems = [
+            { label:"収入",  value:totalIncome, color:"#059669", sign:"+" },
+            { label:"固定費", value:fixedAmt,   color:PINK,      sign:"-" },
+            { label:"変動費", value:varAmt,      color:"#F97316", sign:"-" },
+            { label:"収支",  value:Math.abs(balance), color:balance>=0?"#059669":PINK, sign:balance>=0?"±":"-" },
           ];
-          const maxVal = Math.max(totalIncome, totalExpense, Math.abs(balance), 1);
-          const BAR_MAX_H = 140;
-
-          // ウォーターフォール用offset計算
-          // 収入 → 固定費(収入から下へ) → 変動費(固定費から更に下へ) → 収支
-          const fixedAmt  = wfData[1].value;
-          const varAmt    = wfData[2].value;
-
+          const maxVal = Math.max(totalIncome, fixedAmt, varAmt, Math.abs(balance), 1);
+          const BAR_H  = 120;
           return (
             <div>
-              {/* バーエリア */}
-              <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"space-around", height:BAR_MAX_H+30, position:"relative", marginBottom:8 }}>
+              {/* バーグラフエリア */}
+              <div style={{ display:"flex", alignItems:"flex-end", gap:8, height:BAR_H+40, padding:"0 4px", position:"relative" }}>
                 {/* ゼロライン */}
-                <div style={{ position:"absolute", bottom:30, left:0, right:0, height:1, background:"rgba(200,210,230,0.6)", borderTop:"1px dashed rgba(180,190,220,0.5)" }}/>
-
-                {wfData.map((d,i)=>{
-                  const h = Math.max(Math.round(Math.abs(d.value)/maxVal*BAR_MAX_H), d.value===0?2:4);
-                  // offset: 固定費・変動費はスタック（収入バーの上端から下へ）
-                  let offsetBottom = 30; // ゼロライン上
-                  if (i===1) offsetBottom = 30 + Math.round(totalIncome/maxVal*BAR_MAX_H) - h;
-                  if (i===2) offsetBottom = 30 + Math.round(totalIncome/maxVal*BAR_MAX_H) - Math.round(fixedAmt/maxVal*BAR_MAX_H) - h;
-
+                <div style={{ position:"absolute", bottom:32, left:0, right:0, height:1, background:"rgba(180,190,220,0.5)", borderTop:"1px dashed rgba(180,190,220,0.6)" }}/>
+                {wfItems.map((d,i)=>{
+                  const h = Math.max(Math.round(d.value/maxVal*BAR_H), 4);
                   return (
-                    <div key={d.label} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4, width:"22%", position:"relative" }}>
-                      {/* 金額ラベル（バー上部） */}
-                      <div style={{
-                        position:"absolute",
-                        bottom: offsetBottom + h + 4,
-                        fontSize:9, fontWeight:800, color:d.color,
-                        whiteSpace:"nowrap", letterSpacing:"-0.3px",
-                      }}>
-                        {d.value===0?"¥0":fmt(Math.abs(d.value)).replace("¥","¥")}
+                    <div key={d.label} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}>
+                      {/* 金額 */}
+                      <div style={{ fontSize:9, fontWeight:800, color:d.color, whiteSpace:"nowrap" }}>
+                        ¥{d.value.toLocaleString()}
                       </div>
-                      {/* バー本体 */}
+                      {/* バー */}
                       <div style={{
-                        position:"absolute",
-                        bottom: offsetBottom,
-                        width:"100%",
-                        height: h,
-                        borderRadius: i===3 ? 8 : "8px 8px 4px 4px",
-                        background: d.type==="expense"
-                          ? `linear-gradient(180deg,${d.color}99,${d.color})`
-                          : `linear-gradient(180deg,${d.color}cc,${d.color})`,
+                        width:"100%", height:h, borderRadius:"6px 6px 3px 3px",
+                        background:`linear-gradient(180deg,${d.color}bb,${d.color})`,
                         boxShadow:`0 2px 8px ${d.color}44`,
-                        transition:"height 0.8s cubic-bezier(0.34,1.1,0.64,1)",
+                        position:"relative", overflow:"hidden",
                       }}>
-                        {/* ハイライト */}
-                        <div style={{ position:"absolute",top:0,left:0,right:0,height:"30%",borderRadius:"8px 8px 0 0",background:"rgba(255,255,255,0.25)" }}/>
+                        <div style={{ position:"absolute",top:0,left:0,right:0,height:"30%",background:"rgba(255,255,255,0.25)",borderRadius:"6px 6px 0 0" }}/>
                       </div>
                       {/* ラベル */}
-                      <div style={{ position:"absolute", bottom:4, fontSize:9, fontWeight:700, color:GRAY }}>{d.label}</div>
+                      <div style={{ fontSize:10, fontWeight:700, color:GRAY, textAlign:"center" }}>{d.label}</div>
+                      {/* 金額下 */}
+                      <div style={{ fontSize:10, fontWeight:800, color:d.color, textAlign:"center" }}>
+                        {d.sign}{fmt(d.value).replace("¥","")}<span style={{fontSize:8}}>円</span>
+                      </div>
                     </div>
                   );
                 })}
               </div>
-
-              {/* 差分コネクターライン説明 */}
-              <div style={{ display:"flex", justifyContent:"space-around", marginTop:4 }}>
-                {wfData.map(d=>(
-                  <div key={d.label} style={{ textAlign:"center", width:"22%" }}>
-                    <div style={{ fontSize:10, fontWeight:800, color:d.color }}>
-                      {d.type==="income"?"+":d.type==="balance"?(balance>=0?"±":"-"):"-"}
-                      {fmt(Math.abs(d.value)).replace("¥","")}
-                    </div>
-                    <div style={{ fontSize:8, color:GRAY_L, marginTop:1 }}>円</div>
-                  </div>
-                ))}
-              </div>
-
               {/* 凡例 */}
-              <div style={{ display:"flex", gap:14, justifyContent:"center", marginTop:14, flexWrap:"wrap" }}>
+              <div style={{ display:"flex", gap:12, justifyContent:"center", marginTop:12, flexWrap:"wrap" }}>
                 {[{c:"#059669",l:"収入"},{c:PINK,l:"固定費"},{c:"#F97316",l:"変動費"},{c:balance>=0?"#059669":PINK,l:"収支"}].map(d=>(
                   <div key={d.l} style={{ display:"flex", alignItems:"center", gap:4 }}>
-                    <div style={{ width:10, height:10, borderRadius:3, background:d.c }}/>
-                    <span style={{ fontSize:10, color:GRAY, fontWeight:600 }}>{d.l}</span>
+                    <div style={{ width:10,height:10,borderRadius:3,background:d.c }}/>
+                    <span style={{ fontSize:10,color:GRAY,fontWeight:600 }}>{d.l}</span>
                   </div>
                 ))}
               </div>
@@ -1962,7 +1921,6 @@ function ReportTab({ records, categories, monthKey, onMonthChange }) {
           );
         })()}
       </div>
-
     </div>
   );
 }
@@ -2157,6 +2115,8 @@ export default function App() {
     try{ localStorage.setItem("kakeibo_receipt_titles", JSON.stringify(receiptTitles)); }catch{}
   },[receiptTitles]);
 
+  const [receipt, setReceipt] = useState(null);
+
   // ── カテゴリバージョン：変更時にlocalStorageを強制リセット ──────────
   const CATEGORY_VERSION = "v5-ema"; // categories updated
  // ← カテゴリ変更のたびに番号を上げる
@@ -2219,6 +2179,17 @@ export default function App() {
 
       {!splashDone && <Splash onDone={()=>setSplashDone(true)}/>}
 
+      {/* Receipt Modal — App level so it persists across tab switches */}
+      {receipt && (
+        <ReceiptModal
+          record={receipt.record}
+          catName={receipt.catName}
+          catIcon={receipt.catIcon}
+          customTitle={receipt.customTitle}
+          onClose={()=>setReceipt(null)}
+        />
+      )}
+
       {/* Month header (only on report/history) */}
       {(tab==="report"||tab==="history") && (
         <div style={{ background:"rgba(240,242,250,0.9)", backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)", borderBottom:"1px solid rgba(255,255,255,0.9)", padding:"20px 24px 14px", position:"sticky", top:0, zIndex:100 }}>
@@ -2228,7 +2199,7 @@ export default function App() {
 
       {/* Content */}
       <div style={{ position:"relative", zIndex:1, padding:"20px 20px 0" }}>
-        {tab==="input"    && <InputTab    categories={categories} onAdd={addRecord} receiptTitles={receiptTitles}/>}
+        {tab==="input"    && <InputTab    categories={categories} onAdd={addRecord} receiptTitles={receiptTitles} setReceipt={setReceipt}/>}
         {tab==="report"   && <ReportTab   records={records} categories={categories} monthKey={monthKey} onMonthChange={setMonthKey}/>}
         {tab==="history"  && <HistoryTab  records={records} categories={categories} monthKey={monthKey} onDelete={deleteRecord}/>}
         {tab==="settings" && <SettingsTab categories={categories} setCategories={setCategories} receiptTitles={receiptTitles} setReceiptTitles={setReceiptTitles}/>}
