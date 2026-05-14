@@ -873,6 +873,7 @@ const DEFAULT_CATEGORIES = {
     { id:"inc_2", name:"賞与",         icon:"medal",   color:"#F59E0B", subtractFromIncome:false },
     { id:"inc_3", name:"控除",         icon:"memo",    color:"#94A3B8", subtractFromIncome:true  },
     { id:"inc_4", name:"ふるさと納税", icon:"gift",    color:"#E879A0", subtractFromIncome:true  },
+    { id:"inc_5", name:"雑収入",       icon:"coin",   color:"#F59E0B" },
   ],
   fixed: [
     { id:"fix_1", name:"家賃",     icon:"house",        color:"#E879A0" },
@@ -2097,7 +2098,7 @@ export default function App() {
   const [monthKey,   setMonthKey]   = useState(currentMonthKey());
 
   // ── カテゴリバージョン：変更時にlocalStorageを強制リセット ──────────
-  const CATEGORY_VERSION = "v6-sasami"; // categories updated
+  const CATEGORY_VERSION = "v7-sasami"; // categories updated
  // ← カテゴリ変更のたびに番号を上げる
   const storedVersion = (() => { try { return localStorage.getItem("kakeibo_cat_version"); } catch { return null; } })();
   if (storedVersion !== CATEGORY_VERSION) {
