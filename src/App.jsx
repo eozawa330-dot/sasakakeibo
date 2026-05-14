@@ -795,7 +795,7 @@ const CAT_EN = {
   "年金":"PENSION","健康保険":"HEALTH INS.",
   "食費":"FOOD EXPENSES","外食":"DINING OUT","日用品":"DAILY GOODS","衣服":"CLOTHING",
   "交通費":"TRANSPORT","医療費":"MEDICAL","カーシェア":"CAR SHARE",
-  "美容":"BEAUTY","趣味":"HOBBIES","えま":"Amōre!",
+  "美容":"BEAUTY","趣味":"HOBBIES","えま":"Amōre!","えま(食)":"Emma Food","ゲーム":"GAME","交際":"SOCIAL","バレー":"VOLLEY","教養文化":"CULTURE","デジタル":"DIGITAL","友人":"FRIENDS","特別支出":"SPECIAL","雑収入":"MISC INCOME",
 };
 const getCatEn = name => CAT_EN[name] || name.toUpperCase();
 
@@ -896,7 +896,15 @@ const DEFAULT_CATEGORIES = {
     { id:"var_7", name:"カーシェア",icon:"carshare",color:"#2DD4BF" },
     { id:"var_8", name:"美容",     icon:"beauty",   color:"#E879A0" },
     { id:"var_9", name:"趣味",     icon:"herb",     color:"#6EE7B7" },
-    { id:"var_10",name:"えま",   icon:"heart",    color:"#FCA5A5" },
+    { id:"var_10",name:"えま",     icon:"heart",    color:"#FCA5A5" },
+    { id:"var_11",name:"えま(食)", icon:"fork",     color:"#FB923C" },
+    { id:"var_12",name:"ゲーム",   icon:"hobby",    color:"#8B5CF6" },
+    { id:"var_13",name:"交際",     icon:"gift",     color:"#E879A0" },
+    { id:"var_14",name:"バレー",   icon:"sports",   color:"#3B82F6" },
+    { id:"var_15",name:"教養文化", icon:"book",     color:"#10B981" },
+    { id:"var_16",name:"デジタル", icon:"subscription", color:"#6366F1" },
+    { id:"var_17",name:"友人",     icon:"heart",    color:"#F472B6" },
+    { id:"var_18",name:"特別支出", icon:"diamond",  color:"#F59E0B" },
   ],
 };
 
@@ -1405,13 +1413,18 @@ function InputTab({ categories, onAdd }) {
           <div style={{ display:"flex", gap:6, marginBottom:4 }}>
             {/* メモ */}
             <div style={{ ...neuInset(4), borderRadius:12, padding:"1px 4px", flex:1 }}>
-              <input placeholder="メモ（任意）" value={memo} onChange={e=>setMemo(e.target.value)} style={{ width:"100%", padding:"8px 10px", background:"none", border:"none", outline:"none", fontSize:13, color:DARK, fontFamily:FONT, boxSizing:"border-box" }}/>
+              <input placeholder="メモをこちらに入力して下さい" value={memo} onChange={e=>setMemo(e.target.value)} style={{ width:"100%", padding:"8px 10px", background:"none", border:"none", outline:"none", fontSize:12, color:DARK, fontFamily:FONT, boxSizing:"border-box" }}/>
             </div>
             {/* 日付 */}
             <div style={{ ...neuInset(4), borderRadius:12, padding:"1px 4px", display:"flex", alignItems:"center" }}>
-              <input type="date" value={customDate} onChange={e=>setCustomDate(e.target.value)}
-                style={{ padding:"8px 8px", background:"none", border:"none", outline:"none", fontSize:12, color:customDate?DARK:GRAY, fontFamily:FONT, cursor:"pointer", width:122 }}
-              />
+              <div style={{ position:"relative", display:"flex", alignItems:"center" }}>
+                {!customDate && (
+                  <div style={{ position:"absolute", left:10, fontSize:11, color:GRAY_L, pointerEvents:"none", letterSpacing:"0.5px", fontFamily:FONT }}>YYYY/MM/DD</div>
+                )}
+                <input type="date" value={customDate} onChange={e=>setCustomDate(e.target.value)}
+                  style={{ padding:"8px 8px", background:"none", border:"none", outline:"none", fontSize:12, color:customDate?DARK:"transparent", fontFamily:FONT, cursor:"pointer", width:122 }}
+                />
+              </div>
             </div>
           </div>
           <Calculator onConfirm={handleConfirm}/>
@@ -2084,7 +2097,7 @@ export default function App() {
   const [monthKey,   setMonthKey]   = useState(currentMonthKey());
 
   // ── カテゴリバージョン：変更時にlocalStorageを強制リセット ──────────
-  const CATEGORY_VERSION = "v5-sasami"; // categories updated
+  const CATEGORY_VERSION = "v6-sasami"; // categories updated
  // ← カテゴリ変更のたびに番号を上げる
   const storedVersion = (() => { try { return localStorage.getItem("kakeibo_cat_version"); } catch { return null; } })();
   if (storedVersion !== CATEGORY_VERSION) {
