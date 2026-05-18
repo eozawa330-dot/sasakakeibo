@@ -1437,8 +1437,9 @@ function InputTab({ categories, onAdd }) {
 
 // ─── Report Tab ─────────────────────────────────────────────────────────────
 function ReportTab({ records, categories, monthKey, onMonthChange }) {
-  const [selectedDay, setSelectedDay] = useState(null);
-  const [reportView, setReportView]   = useState("overview"); // overview | calendar | weekly
+  const [selectedDay, setSelectedDay]   = useState(null);
+  const [reportView, setReportView]     = useState("overview");
+  const [expenseTab, setExpenseTab]     = useState("fixed"); // fixed | variable
 
   const allCats = [...categories.income, ...categories.fixed, ...categories.variable];
   const getCat  = id => allCats.find(c => c.id === id) || { name:"不明", icon:"star", color:"#94A3B8" };
@@ -1450,14 +1451,23 @@ function ReportTab({ records, categories, monthKey, onMonthChange }) {
   const savingRate   = totalIncome > 0 ? Math.round(balance / totalIncome * 100) : 0;
   const isNow        = monthKey === currentMonthKey();
 
-  const catMap = {};
-  monthRecs.filter(r => r.type !== "income").forEach(r => {
-    catMap[r.categoryId] = (catMap[r.categoryId] || 0) + r.amount;
-  });
-  const pieData = Object.entries(catMap).map(([id,value]) => {
-    const cat = getCat(id);
-    return { name:cat.name, value, color:cat.color, icon:cat.icon };
-  }).filter(d => d.value > 0).sort((a,b) => b.value - a.value);
+  // 固定費・変動費それぞれのpieData
+  const makePieData = (type) => {
+    const map = {};
+    monthRecs.filter(r => r.type === type).forEach(r => {
+      map[r.categoryId] = (map[r.categoryId] || 0) + r.amount;
+    });
+    return Object.entries(map).map(([id,value]) => {
+      const cat = getCat(id);
+      return { name:cat.name, value, color:cat.color, icon:cat.icon };
+    }).filter(d => d.value > 0).sort((a,b) => b.value - a.value);
+  };
+  const fixedPieData    = makePieData("fixed");
+  const variablePieData = makePieData("variable");
+  const pieData = expenseTab === "fixed" ? fixedPieData : variablePieData;
+  const fixedTotal    = monthRecs.filter(r=>r.type==="fixed").reduce((s,r)=>s+r.amount,0);
+  const variableTotal = monthRecs.filter(r=>r.type==="variable").reduce((s,r)=>s+r.amount,0);
+  const pieTotal = expenseTab === "fixed" ? fixedTotal : variableTotal;
 
   const lineData = [];
   for (let i = 5; i >= 0; i--) {
@@ -1632,68 +1642,72 @@ function ReportTab({ records, categories, monthKey, onMonthChange }) {
       </div>
 
       {/* ── 支出内訳 Card ── */}
-      {pieData.length > 0 && (
-        <div style={{ ...neuCard, padding:"22px 20px 18px", marginBottom:16 }}>
-          {/* Section header */}
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20 }}>
-            <div>
-              <div style={{ fontSize:14, fontWeight:800, color:DARKER, letterSpacing:"-0.2px" }}>支出内訳</div>
-              <div style={{ fontSize:10, color:GRAY, fontWeight:600, letterSpacing:"0.5px", marginTop:2 }}>BREAKDOWN BY CATEGORY</div>
-            </div>
-            <div style={{ textAlign:"right" }}>
-              <div style={{ fontSize:11, color:GRAY, fontWeight:600 }}>合計</div>
-              <div style={{ fontSize:15, fontWeight:900, color:DARKER }}>{fmt(totalExpense)}</div>
-            </div>
+      <div style={{ ...neuCard, padding:"22px 20px 18px", marginBottom:16 }}>
+        {/* Section header */}
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14 }}>
+          <div>
+            <div style={{ fontSize:14, fontWeight:800, color:DARKER, letterSpacing:"-0.2px" }}>支出内訳</div>
+            <div style={{ fontSize:10, color:GRAY, fontWeight:600, letterSpacing:"0.5px", marginTop:2 }}>BREAKDOWN BY CATEGORY</div>
           </div>
+          <div style={{ textAlign:"right" }}>
+            <div style={{ fontSize:11, color:GRAY, fontWeight:600 }}>合計</div>
+            <div style={{ fontSize:15, fontWeight:900, color:DARKER }}>{fmt(pieTotal)}</div>
+          </div>
+        </div>
 
+        {/* 固定費 / 変動費 タブ */}
+        <div style={{ display:"flex", gap:8, marginBottom:18 }}>
+          {[["fixed","固定費",fixedTotal],["variable","変動費",variableTotal]].map(([v,l,total])=>(
+            <button key={v} onClick={()=>setExpenseTab(v)} style={{
+              flex:1, padding:"8px 0", borderRadius:12, border:"none", cursor:"pointer",
+              fontFamily:FONT, fontSize:12, fontWeight:700,
+              background: expenseTab===v ? NOISE_GRAD : "rgba(255,255,255,0.6)",
+              color: expenseTab===v ? DARKER : GRAY,
+              boxShadow: expenseTab===v ? neuShadow(3) : "none",
+              transition:"all 0.18s ease",
+            }}>
+              {l}
+              <span style={{ fontSize:10, marginLeft:4, fontWeight:600, opacity:0.7 }}>{fmt(total)}</span>
+            </button>
+          ))}
+        </div>
+
+        {pieData.length > 0 ? (<>
           {/* Donut — centered, large */}
           <div style={{ display:"flex", justifyContent:"center", marginBottom:24 }}>
             <div style={{ position:"relative", width:240, height:240, animation:"ringPop 0.6s cubic-bezier(0.34,1.56,0.64,1) both" }}>
-              {/* outer glow ring */}
-              <div style={{
-                position:"absolute", inset:-6, borderRadius:"50%",
-                background:`conic-gradient(${pieData.map((d,i,arr)=>{
-                  const cum = arr.slice(0,i).reduce((s,x)=>s+x.value,0);
-                  const start = Math.round(cum/totalExpense*360);
-                  const end   = Math.round((cum+d.value)/totalExpense*360);
-                  return `${d.color} ${start}deg ${end}deg`;
-                }).join(", ")})`,
-                opacity:0.18, filter:"blur(12px)",
-              }}/>
-              {/* inset bg */}
               <div style={{ position:"absolute", inset:0, borderRadius:"50%", ...neuInset(8) }}/>
               <ResponsiveContainer width={240} height={240}>
                 <PieChart>
                   <Pie data={pieData} cx="50%" cy="50%"
-                    innerRadius={74} outerRadius={110}
-                    dataKey="value" paddingAngle={5}
+                    innerRadius={76} outerRadius={110}
+                    dataKey="value" paddingAngle={2}
                     startAngle={90} endAngle={-270}
-                    cornerRadius={8}
                     strokeWidth={0}
                   >
                     {pieData.map((d,i) => (
-                      <Cell key={i} fill={d.color}
-                        style={{ filter:`drop-shadow(0 3px 8px ${d.color}66)` }}
-                      />
+                      <Cell key={i} fill={d.color}/>
                     ))}
                   </Pie>
                 </PieChart>
               </ResponsiveContainer>
               {/* Centre text */}
               <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", pointerEvents:"none" }}>
-                <div style={{ fontSize:9, color:GRAY, fontWeight:700, letterSpacing:"1.5px", marginBottom:4 }}>支出合計</div>
+                <div style={{ fontSize:9, color:GRAY, fontWeight:700, letterSpacing:"1.5px", marginBottom:4 }}>
+                  {expenseTab==="fixed"?"固定費":"変動費"}
+                </div>
                 <div style={{ fontSize:24, fontWeight:900, color:DARKER, letterSpacing:"-1px", lineHeight:1, fontVariantNumeric:"tabular-nums" }}>
-                  {fmt(totalExpense).replace("¥","")}
+                  {fmt(pieTotal).replace("¥","")}
                 </div>
                 <div style={{ fontSize:10, color:GRAY, fontWeight:600, marginTop:3 }}>円</div>
               </div>
             </div>
           </div>
 
-          {/* Legend rows — clean horizontal bars */}
+          {/* Legend rows */}
           <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
             {pieData.map((d,i) => {
-              const pct = totalExpense ? Math.round(d.value/totalExpense*100) : 0;
+              const pct = pieTotal ? Math.round(d.value/pieTotal*100) : 0;
               return (
                 <div key={d.name} style={{ display:"flex", alignItems:"center", gap:10 }}>
                   {/* Icon badge */}
@@ -2100,10 +2114,26 @@ export default function App() {
   // ── カテゴリバージョン：変更時にlocalStorageを強制リセット ──────────
   const CATEGORY_VERSION = "v7-sasami"; // categories updated
  // ← カテゴリ変更のたびに番号を上げる
+  // ── カテゴリのマージ更新（ユーザーのカスタムを消さずに新カテゴリを追加）──
   const storedVersion = (() => { try { return localStorage.getItem("kakeibo_cat_version"); } catch { return null; } })();
   if (storedVersion !== CATEGORY_VERSION) {
     try {
-      localStorage.removeItem("kakeibo_categories");
+      const savedCats = localStorage.getItem("kakeibo_categories");
+      if (savedCats) {
+        // 既存データにデフォルトの新カテゴリをマージ
+        const existing = JSON.parse(savedCats);
+        const merged = { ...existing };
+        // 各グループ（income/fixed/variable）について
+        ["income","fixed","variable"].forEach(group => {
+          const existingIds = new Set((existing[group]||[]).map(c=>c.id));
+          const newCats = (DEFAULT_CATEGORIES[group]||[]).filter(c=>!existingIds.has(c.id));
+          if (newCats.length > 0) {
+            merged[group] = [...(existing[group]||[]), ...newCats];
+          }
+        });
+        localStorage.setItem("kakeibo_categories", JSON.stringify(merged));
+      }
+      // バージョンだけ更新（データは消さない）
       localStorage.setItem("kakeibo_cat_version", CATEGORY_VERSION);
     } catch {}
   }
