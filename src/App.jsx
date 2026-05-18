@@ -1742,8 +1742,12 @@ function ReportTab({ records, categories, monthKey, onMonthChange }) {
               );
             })}
           </div>
-        </div>
-      )}
+        </>) : (
+          <div style={{ textAlign:"center", color:GRAY, padding:"32px 0", fontSize:13 }}>
+            {expenseTab==="fixed"?"固定費":"変動費"}の記録がありません
+          </div>
+        )}
+      </div>
 
       {/* ── 月別推移 Card ── */}
       <div style={{ ...neuCard, padding:"22px 20px 18px", marginBottom:16 }}>
