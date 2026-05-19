@@ -966,17 +966,29 @@ function NeuBtn({ children, onClick, accent, active, style={}, small=false }) {
 // ─── Calculator ─────────────────────────────────────────────────────────────
 function Calculator({ onConfirm }) {
   const [display, setDisplay] = useState("0");
+  const [pressed, setPressed] = useState(null);
+
   const press = k => setDisplay(p => {
     if (k==="⌫") return p.length<=1?"0":p.slice(0,-1);
     if (k==="AC") return "0";
-    if (k==="00") return p==="0"?"0":p+"00";
     if (p==="0"&&k!==".") return k;
     if (p.replace(".","").length>=9) return p;
     return p+k;
   });
+
+  const handleRegister = () => {
+    const v = parseFloat(display);
+    if (v > 0) {
+      onConfirm(v);
+      setDisplay("0");
+    }
+  };
+
   const keys = [["7","8","9"],["4","5","6"],["1","2","3"],["AC","0","⌫"]];
+
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:5 }}>
+      {/* 金額表示 */}
       <div style={{ ...neuInset(6), borderRadius:14, padding:"8px 16px", textAlign:"right", marginBottom:0, border:"1px solid rgba(255,255,255,0.35)" }}>
         <div style={{ fontSize:10, color:GRAY, fontWeight:700, letterSpacing:"1.5px", marginBottom:2 }}>金額</div>
         <div style={{ fontSize:32, fontWeight:900, color:DARK, letterSpacing:"-1px", fontVariantNumeric:"tabular-nums" }}>
@@ -984,25 +996,48 @@ function Calculator({ onConfirm }) {
           <span style={{ fontSize:20, color:TEAL2, marginLeft:4, fontWeight:700 }}>円</span>
         </div>
       </div>
+      {/* キーパッド */}
       <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10 }}>
         {keys.flat().map(k => {
           const isAC=k==="AC", isDel=k==="⌫";
+          const isP = pressed===k;
           return (
             <button key={k}
-              onMouseDown={e=>{e.currentTarget.style.boxShadow=neuInsetShadow(4);e.currentTarget.style.transform="scale(0.96)";}}
-              onMouseUp={e=>{e.currentTarget.style.boxShadow=neuShadow(5);e.currentTarget.style.transform="scale(1)";}}
-              onMouseLeave={e=>{e.currentTarget.style.boxShadow=neuShadow(5);e.currentTarget.style.transform="scale(1)";}}
-              onClick={()=>press(k)}
-              style={{ background:"rgba(255,255,255,0.18)", backdropFilter:"blur(10px)", WebkitBackdropFilter:"blur(10px)", border:"1px solid rgba(255,255,255,0.38)", borderRadius:13, padding:"13px 0", fontSize:19, fontWeight:600, fontFamily:FONT, color:isAC?PINK:isDel?TEAL2:DARK, cursor:"pointer", boxShadow:"0 4px 12px rgba(80,40,160,0.12)", transition:"all 0.1s ease" }}
+              onPointerDown={()=>{ setPressed(k); press(k); }}
+              onPointerUp={()=>setPressed(null)}
+              onPointerLeave={()=>setPressed(null)}
+              style={{
+                background: isP ? "rgba(220,225,240,0.9)" : "rgba(255,255,255,0.72)",
+                backdropFilter:"blur(10px)", WebkitBackdropFilter:"blur(10px)",
+                border:"1px solid rgba(255,255,255,0.8)", borderRadius:13,
+                padding:"16px 0", fontSize:20, fontWeight:600, fontFamily:FONT,
+                color:isAC?PINK:isDel?TEAL2:DARK, cursor:"pointer",
+                boxShadow: isP ? neuInsetShadow(3) : neuShadow(4),
+                transform: isP ? "scale(0.96)" : "scale(1)",
+                transition:"transform 0.08s ease, box-shadow 0.08s ease",
+                WebkitTapHighlightColor:"transparent",
+                touchAction:"manipulation",
+              }}
             >{k}</button>
           );
         })}
       </div>
+      {/* 登録ボタン */}
       <button
-        onMouseDown={e=>{e.currentTarget.style.transform="scale(0.97)";e.currentTarget.style.boxShadow=`inset 2px 2px 8px rgba(0,0,0,0.2), 0 0 14px ${TEAL_GLOW}`;}}
-        onMouseUp={e=>{e.currentTarget.style.transform="scale(1)";e.currentTarget.style.boxShadow=ACCENT_SHADOW;}}
-        onClick={()=>{ const v=parseFloat(display); if(v>0)onConfirm(v); }}
-        style={{ background:NOISE_GRAD, border:"1px solid rgba(255,255,255,0.8)", borderRadius:14, padding:"13px", fontSize:15, fontWeight:800, fontFamily:FONT, color:DARKER, cursor:"pointer", marginTop:4, letterSpacing:"0.5px", boxShadow:NOISE_SHADOW, transition:"all 0.12s ease" }}
+        onPointerDown={()=>setPressed("reg")}
+        onPointerUp={()=>{ setPressed(null); handleRegister(); }}
+        onPointerLeave={()=>setPressed(null)}
+        style={{
+          background: NOISE_GRAD,
+          border:"1px solid rgba(255,255,255,0.8)", borderRadius:14,
+          padding:"15px", fontSize:16, fontWeight:800, fontFamily:FONT,
+          color:DARKER, cursor:"pointer", marginTop:4, letterSpacing:"0.5px",
+          boxShadow: pressed==="reg" ? neuInsetShadow(3) : NOISE_SHADOW,
+          transform: pressed==="reg" ? "scale(0.97)" : "scale(1)",
+          transition:"transform 0.08s ease",
+          WebkitTapHighlightColor:"transparent",
+          touchAction:"manipulation",
+        }}
       >登録する ✓</button>
     </div>
   );
