@@ -1338,23 +1338,15 @@ function InputTab({ categories, onAdd }) {
   const [memo, setMemo]             = useState("");
   const [customDate, setCustomDate] = useState("");
   const [toast, setToast]           = useState(null);
-  const [detailModal, setDetailModal] = useState(null); // {amount} 金額確定後のメモ/日付入力
+  const [memoModal, setMemoModal]   = useState(false); // メモ・日付入力モーダル
   const [receipt, setReceipt]       = useState(null); // {record, catName, catIcon}
 
   const cats = mode==="income" ? categories.income : expenseType==="fixed" ? categories.fixed : categories.variable;
 
   const showToast = msg => { setToast(msg); setTimeout(()=>setToast(null), 2200); };
 
-  // 金額確定 → メモ/日付モーダルを開く
   const handleConfirm = amount => {
     if (!amount || amount <= 0) return;
-    setDetailModal({ amount });
-  };
-
-  // メモ/日付モーダルで「登録する」
-  const handleRegister = () => {
-    if (!detailModal) return;
-    const { amount } = detailModal;
     const today=new Date();
     const todayStr=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
     const date = customDate || todayStr;
@@ -1369,8 +1361,7 @@ function InputTab({ categories, onAdd }) {
     const catFull = allCats.find(ct=>ct.id===selectedCat.id);
     const customTitle = catFull?.receiptTitle || receiptTitles[selectedCat.name] || CAT_EN[selectedCat.name] || selectedCat.name.toUpperCase();
     setReceipt({ record:newRecord, catName:selectedCat.name, catIcon:selectedCat.icon||"star", customTitle });
-    setDetailModal(null);
-    setStep("category"); setSelectedCat(null); setMemo(""); setCustomDate("");
+    setStep("category"); setSelectedCat(null); setMemo(""); setCustomDate(""); setMemoModal(false);
   };
 
   return (
@@ -1423,51 +1414,47 @@ function InputTab({ categories, onAdd }) {
               <div style={{ fontSize:16, fontWeight:800, color:DARK }}>{selectedCat.name}</div>
             </div>
           </div>
-          <div style={{ display:"flex", gap:6, marginBottom:4 }}>
-            {/* メモ */}
-            <div style={{ ...neuInset(4), borderRadius:12, padding:"1px 4px", flex:1 }}>
-              <input placeholder="メモをこちらに入力して下さい" value={memo} onChange={e=>setMemo(e.target.value)} style={{ width:"100%", padding:"8px 10px", background:"none", border:"none", outline:"none", fontSize:12, color:DARK, fontFamily:FONT, boxSizing:"border-box" }}/>
-            </div>
-            {/* 日付 */}
-            <div style={{ ...neuInset(4), borderRadius:12, padding:"1px 4px", display:"flex", alignItems:"center" }}>
-              <div style={{ position:"relative", display:"flex", alignItems:"center" }}>
-                {!customDate && (
-                  <div style={{ position:"absolute", left:10, fontSize:11, color:GRAY_L, pointerEvents:"none", letterSpacing:"0.5px", fontFamily:FONT }}>YYYY/MM/DD</div>
-                )}
-                <input type="date" value={customDate} onChange={e=>setCustomDate(e.target.value)}
-                  style={{ padding:"8px 8px", background:"none", border:"none", outline:"none", fontSize:12, color:customDate?DARK:"transparent", fontFamily:FONT, cursor:"pointer", width:122 }}
-                />
+          {/* メモ・日付 タップでモーダル表示 */}
+          <button onClick={()=>setMemoModal(true)} style={{
+            width:"100%", display:"flex", alignItems:"center", gap:10, marginBottom:6,
+            background:GLASS_BG, backdropFilter:"blur(12px)", WebkitBackdropFilter:"blur(12px)",
+            border:GLASS_BORDER, borderRadius:14, padding:"10px 14px",
+            cursor:"pointer", fontFamily:FONT, textAlign:"left",
+            boxShadow:neuShadow(4),
+          }}>
+            <div style={{ flex:1 }}>
+              <div style={{ fontSize:11, color:GRAY, marginBottom:2 }}>
+                {memo ? memo : <span style={{ color:GRAY_L }}>メモをこちらに入力してください</span>}
+              </div>
+              <div style={{ fontSize:10, color:customDate ? TEAL2 : GRAY_L }}>
+                {customDate ? `📅 ${customDate}` : "📅 日付を指定する（空欄=今日）"}
               </div>
             </div>
-          </div>
-          <Calculator onConfirm={handleConfirm}/>
+            <div style={{ fontSize:12, color:GRAY_L }}>›</div>
+          </button>
 
-          {/* ── メモ・日付入力モーダル ── */}
-          {detailModal && (
+          {/* メモ・日付入力モーダル */}
+          {memoModal && (
             <div style={{ position:"fixed", inset:0, zIndex:600,
               background:"rgba(200,205,230,0.65)", backdropFilter:"blur(12px)", WebkitBackdropFilter:"blur(12px)",
               display:"flex", alignItems:"flex-end"
-            }} onClick={()=>setDetailModal(null)}>
+            }} onClick={()=>setMemoModal(false)}>
               <div onClick={e=>e.stopPropagation()} style={{
                 ...neuCard, width:"100%", borderRadius:"24px 24px 0 0",
                 padding:"24px 20px 120px",
               }}>
-                {/* 金額確認 */}
-                <div style={{ textAlign:"center", marginBottom:20 }}>
-                  <div style={{ fontSize:11, color:GRAY, fontWeight:700, letterSpacing:"1.5px", marginBottom:4 }}>登録金額</div>
-                  <div style={{ fontSize:32, fontWeight:900, color:DARKER, letterSpacing:"-1px" }}>
-                    ¥{detailModal.amount.toLocaleString()}
-                    <span style={{ fontSize:14, color:GRAY, marginLeft:4 }}>円</span>
-                  </div>
-                  <div style={{ fontSize:12, color:TEAL2, fontWeight:700, marginTop:4 }}>{selectedCat?.name}</div>
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:18 }}>
+                  <div style={{ fontSize:14, fontWeight:800, color:DARKER }}>メモ・日付を入力</div>
+                  <button onClick={()=>setMemoModal(false)} style={{ background:"none", border:"none", fontSize:20, color:GRAY, cursor:"pointer", padding:"0 4px" }}>×</button>
                 </div>
                 {/* メモ */}
                 <div style={{ fontSize:10, color:GRAY, fontWeight:700, letterSpacing:"1.5px", marginBottom:6 }}>メモ（任意）</div>
-                <div style={{ ...neuInset(4), borderRadius:12, padding:"2px 4px", marginBottom:14 }}>
+                <div style={{ ...neuInset(4), borderRadius:12, padding:"2px 4px", marginBottom:16 }}>
                   <input
+                    autoFocus
                     value={memo} onChange={e=>setMemo(e.target.value)}
                     placeholder="メモをこちらに入力してください"
-                    style={{ width:"100%", padding:"10px 12px", background:"none", border:"none", outline:"none", fontSize:14, color:DARK, fontFamily:FONT, boxSizing:"border-box" }}
+                    style={{ width:"100%", padding:"12px 14px", background:"none", border:"none", outline:"none", fontSize:15, color:DARK, fontFamily:FONT, boxSizing:"border-box" }}
                   />
                 </div>
                 {/* 日付 */}
@@ -1475,20 +1462,20 @@ function InputTab({ categories, onAdd }) {
                 <div style={{ ...neuInset(4), borderRadius:12, padding:"2px 4px", marginBottom:20 }}>
                   <input
                     type="date" value={customDate} onChange={e=>setCustomDate(e.target.value)}
-                    style={{ width:"100%", padding:"10px 12px", background:"none", border:"none", outline:"none", fontSize:14, color:DARK, fontFamily:FONT, boxSizing:"border-box" }}
+                    style={{ width:"100%", padding:"12px 14px", background:"none", border:"none", outline:"none", fontSize:15, color:DARK, fontFamily:FONT, boxSizing:"border-box" }}
                   />
                 </div>
-                {/* 登録ボタン */}
-                <button onClick={handleRegister} style={{
+                <button onClick={()=>setMemoModal(false)} style={{
                   width:"100%", padding:"16px", borderRadius:16,
                   border:"1px solid rgba(255,255,255,0.8)",
                   background:NOISE_GRAD, fontSize:16, fontWeight:800,
                   color:DARKER, cursor:"pointer", fontFamily:FONT,
                   letterSpacing:"0.5px", boxShadow:NOISE_SHADOW,
-                }}>登録する ✓</button>
+                }}>完了</button>
               </div>
             </div>
           )}
+          <Calculator onConfirm={handleConfirm}/>
         </>
       )}
     </div>
