@@ -1388,6 +1388,7 @@ function InputTab({ categories, onAdd }) {
     const catFull = allCats.find(ct=>ct.id===selectedCat.id);
     const customTitle = catFull?.receiptTitle || receiptTitles[selectedCat.name] || CAT_EN[selectedCat.name] || selectedCat.name.toUpperCase();
     setReceipt({ record:newRecord, catName:selectedCat.name, catIcon:selectedCat.icon||"star", customTitle });
+    showToast("登録したよん 🎉");
     setStep("category"); setSelectedCat(null); setMemo(""); setCustomDate(""); setMemoModal(false);
   };
 
@@ -1402,10 +1403,21 @@ function InputTab({ categories, onAdd }) {
         />
       )}
       {toast && (
-        <div style={{ position:"fixed", top:24, left:"50%", transform:"translateX(-50%)", background:"linear-gradient(135deg, rgba(167,139,250,0.95), rgba(45,212,191,0.95))", backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)", color:DARK, borderRadius:99, padding:"12px 24px", fontSize:14, fontWeight:700, zIndex:999, whiteSpace:"nowrap", boxShadow:neuShadow(8) }}>
+        <div style={{
+          position:"fixed", top:40, left:"50%", transform:"translateX(-50%)",
+          background:"linear-gradient(135deg, #FFF0F6, #FFF8F0)",
+          border:"1.5px solid rgba(244,114,182,0.3)",
+          backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)",
+          color:PINK, borderRadius:99, padding:"13px 28px",
+          fontSize:15, fontWeight:800, zIndex:999, whiteSpace:"nowrap",
+          boxShadow:`0 8px 32px rgba(244,114,182,0.25), 0 2px 8px rgba(255,255,255,0.8)`,
+          letterSpacing:"0.3px", fontFamily:FONT,
+          animation:"toastIn 0.35s cubic-bezier(0.34,1.56,0.64,1)",
+        }}>
           {toast}
         </div>
       )}
+      <style>{`@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(-12px) scale(0.88)}to{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}}`}</style>
 
       {/* Mode toggle — NO emoji */}
       <div style={{ display:"flex", gap:10, marginBottom:22 }}>
