@@ -1338,26 +1338,38 @@ function InputTab({ categories, onAdd }) {
   const [memo, setMemo]             = useState("");
   const [customDate, setCustomDate] = useState("");
   const [toast, setToast]           = useState(null);
+  const [detailModal, setDetailModal] = useState(null); // {amount} 金額確定後のメモ/日付入力
   const [receipt, setReceipt]       = useState(null); // {record, catName, catIcon}
 
   const cats = mode==="income" ? categories.income : expenseType==="fixed" ? categories.fixed : categories.variable;
 
   const showToast = msg => { setToast(msg); setTimeout(()=>setToast(null), 2200); };
 
+  // 金額確定 → メモ/日付モーダルを開く
   const handleConfirm = amount => {
+    if (!amount || amount <= 0) return;
+    setDetailModal({ amount });
+  };
+
+  // メモ/日付モーダルで「登録する」
+  const handleRegister = () => {
+    if (!detailModal) return;
+    const { amount } = detailModal;
     const today=new Date();
     const todayStr=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
     const date = customDate || todayStr;
-    // 控除・ふるさと納税はsubtractFromIncome=trueなのでマイナス金額で保存
     const allIncomeCats = categories.income;
     const catDef = allIncomeCats.find(ct=>ct.id===selectedCat.id);
     const isSubtract = catDef?.subtractFromIncome === true;
-    // 控除・ふるさと納税は支出として記録（支出合計に加算）
     const recordType = isSubtract ? "variable" : mode==="income" ? "income" : expenseType;
-    const finalAmount = Math.abs(amount); // 常に正の値で保存
+    const finalAmount = Math.abs(amount);
     const newRecord = { id:"r"+Date.now(), type:recordType, categoryId:selectedCat.id, amount:finalAmount, date, memo };
     onAdd(newRecord);
-    setReceipt({ record:newRecord, catName:selectedCat.name, catIcon:selectedCat.icon||"star" });
+    const allCats = [...categories.income,...categories.fixed,...categories.variable];
+    const catFull = allCats.find(ct=>ct.id===selectedCat.id);
+    const customTitle = catFull?.receiptTitle || receiptTitles[selectedCat.name] || CAT_EN[selectedCat.name] || selectedCat.name.toUpperCase();
+    setReceipt({ record:newRecord, catName:selectedCat.name, catIcon:selectedCat.icon||"star", customTitle });
+    setDetailModal(null);
     setStep("category"); setSelectedCat(null); setMemo(""); setCustomDate("");
   };
 
@@ -2004,105 +2016,152 @@ function HistoryTab({ records, categories, monthKey, onDelete }) {
 
 // ─── Settings Tab ────────────────────────────────────────────────────────────
 function SettingsTab({ categories, setCategories }) {
-  const [editingGroup, setEditingGroup] = useState(null);
-  const [editingCat,   setEditingCat]   = useState(null); // {gkey, cat} for icon edit
-  const [newName,      setNewName]      = useState("");
-  const [newIcon,      setNewIcon]      = useState("star");
-  const [selectedColor,setSelectedColor]= useState("#2DD4BF");
-  const COLORS=["#F472B6","#2DD4BF","#34D399","#FBBF24","#A78BFA","#FB923C","#38BDF8","#F87171","#60A5FA","#C084FC","#10B981","#E879A0"];
+  const COLORS = ["#F472B6","#2DD4BF","#34D399","#FBBF24","#A78BFA","#FB923C","#38BDF8","#F87171","#60A5FA","#C084FC","#10B981","#E879A0"];
+  const groups = [{key:"income",label:"収入カテゴリ"},{key:"fixed",label:"固定費カテゴリ"},{key:"variable",label:"変動費カテゴリ"}];
 
-  const groups=[{key:"income",label:"収入カテゴリ"},{key:"fixed",label:"固定費カテゴリ"},{key:"variable",label:"変動費カテゴリ"}];
+  // モーダルstate（追加 / 編集 兼用）
+  const [modal, setModal] = useState(null);
+  // modal = { mode:"add"|"edit", gkey, cat?:{id,name,icon,color,receiptTitle} }
+  // フォームstate
+  const [fName,         setFName]         = useState("");
+  const [fIcon,         setFIcon]         = useState("star");
+  const [fColor,        setFColor]        = useState("#2DD4BF");
+  const [fReceiptTitle, setFReceiptTitle] = useState("");
 
-  const addCat = gk => {
-    if(!newName.trim()) return;
-    setCategories(prev=>({...prev,[gk]:[...prev[gk],{id:gk+"_"+Date.now(),name:newName.trim(),icon:newIcon,color:selectedColor}]}));
-    setNewName(""); setEditingGroup(null);
+  const openAdd = (gk) => {
+    setFName(""); setFIcon("star"); setFColor("#2DD4BF"); setFReceiptTitle("");
+    setModal({ mode:"add", gkey:gk });
+  };
+  const openEdit = (gk, cat) => {
+    setFName(cat.name); setFIcon(cat.icon||"star"); setFColor(cat.color||"#2DD4BF");
+    setFReceiptTitle(cat.receiptTitle||"");
+    setModal({ mode:"edit", gkey:gk, cat });
+  };
+  const closeModal = () => setModal(null);
+
+  const handleSave = () => {
+    if (!fName.trim()) return;
+    if (modal.mode === "add") {
+      setCategories(prev=>({...prev,[modal.gkey]:[...prev[modal.gkey],{
+        id:modal.gkey+"_"+Date.now(), name:fName.trim(),
+        icon:fIcon, color:fColor, receiptTitle:fReceiptTitle.trim()||""
+      }]}));
+    } else {
+      setCategories(prev=>({...prev,[modal.gkey]:prev[modal.gkey].map(c=>
+        c.id===modal.cat.id ? {...c, name:fName.trim(), icon:fIcon, color:fColor, receiptTitle:fReceiptTitle.trim()||""} : c
+      )}));
+    }
+    closeModal();
   };
   const deleteCat = (gk,id) => setCategories(prev=>({...prev,[gk]:prev[gk].filter(c=>c.id!==id)}));
-  const updateCatIcon = (gk, id, icon) => {
-    setCategories(prev=>({...prev,[gk]:prev[gk].map(c=>c.id===id?{...c,icon}:c)}));
-  };
-  const updateCatColor = (gk, id, color) => {
-    setCategories(prev=>({...prev,[gk]:prev[gk].map(c=>c.id===id?{...c,color}:c)}));
-    // リアルタイムプレビュー：editingCat も更新
-    setEditingCat(prev => prev && prev.cat.id===id ? {...prev, cat:{...prev.cat, color}} : prev);
-  };
-  const updateCatIconLive = (gk, id, icon) => {
-    setCategories(prev=>({...prev,[gk]:prev[gk].map(c=>c.id===id?{...c,icon}:c)}));
-    setEditingCat(prev => prev && prev.cat.id===id ? {...prev, cat:{...prev.cat, icon}} : prev);
-  };
 
   return (
     <div style={{ paddingBottom:110 }}>
-      {/* Icon edit modal */}
-      {editingCat && (
-        <div style={{ position:"fixed", inset:0, zIndex:500, background:"rgba(230,234,248,0.88)", backdropFilter:"blur(20px)", display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
-          <div style={{ ...neuCard, width:"100%", maxWidth:420, padding:"24px 20px" }}>
-            {/* リアルタイムプレビュー */}
-            <div style={{ display:"flex", alignItems:"center", gap:14, marginBottom:18, padding:"14px 16px", borderRadius:16, background:BG2, boxShadow:neuInsetShadow(4) }}>
-              <div style={{ width:56, height:56, borderRadius:18, background:editingCat.cat.color+"22", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:`4px 4px 10px rgba(163,177,198,0.4),-4px -4px 10px rgba(255,255,255,0.9)`, transition:"background 0.2s ease", flexShrink:0 }}>
-                <Icon3D type={editingCat.cat.icon||"star"} size={38}/>
+
+      {/* ── モーダル（追加 / 編集） ── */}
+      {modal && (
+        <div style={{ position:"fixed", inset:0, zIndex:600,
+          background:"rgba(200,205,230,0.7)", backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)",
+          display:"flex", alignItems:"flex-end", justifyContent:"center", padding:"0 0 0 0"
+        }} onClick={closeModal}>
+          <div onClick={e=>e.stopPropagation()} style={{
+            ...neuCard, width:"100%", maxWidth:480,
+            borderRadius:"24px 24px 0 0", padding:"24px 20px 40px",
+            maxHeight:"88vh", overflowY:"auto",
+          }}>
+            {/* ヘッダー */}
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:18 }}>
+              <div style={{ fontSize:14, fontWeight:800, color:DARKER }}>
+                {modal.mode==="add" ? "カテゴリを追加" : "カテゴリを編集"}
+              </div>
+              <button onClick={closeModal} style={{ background:"none", border:"none", fontSize:18, color:GRAY, cursor:"pointer", padding:"0 4px" }}>×</button>
+            </div>
+
+            {/* プレビュー */}
+            <div style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 16px", borderRadius:16, background:BG2, boxShadow:neuInsetShadow(4), marginBottom:18 }}>
+              <div style={{ width:48, height:48, borderRadius:14, background:fColor+"22", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                <Icon3D type={fIcon} size={32}/>
               </div>
               <div>
-                <div style={{ fontSize:12, fontWeight:800, color:DARKER }}>{editingCat.cat.name}</div>
-                <div style={{ fontSize:11, color:editingCat.cat.color, fontWeight:700, marginTop:2, transition:"color 0.2s" }}>● {editingCat.cat.color}</div>
+                <div style={{ fontSize:13, fontWeight:800, color:DARKER }}>{fName||"カテゴリ名"}</div>
+                <div style={{ fontSize:11, color:fColor, fontWeight:600, marginTop:2 }}>
+                  {fReceiptTitle||"レシートタイトル（未設定）"}
+                </div>
               </div>
             </div>
+
+            {/* カテゴリ名 */}
+            <div style={{ fontSize:10, color:GRAY, fontWeight:700, letterSpacing:"1.5px", marginBottom:6 }}>カテゴリ名</div>
+            <div style={{ ...neuInset(4), borderRadius:12, padding:"2px 4px", marginBottom:14 }}>
+              <input value={fName} onChange={e=>setFName(e.target.value)}
+                placeholder="例：外食、ゲームなど"
+                style={{ width:"100%", padding:"10px 12px", background:"none", border:"none", outline:"none", fontSize:14, color:DARK, fontFamily:FONT, boxSizing:"border-box" }}
+              />
+            </div>
+
+            {/* レシートタイトル（英字） */}
+            <div style={{ fontSize:10, color:GRAY, fontWeight:700, letterSpacing:"1.5px", marginBottom:4 }}>レシートタイトル（英字）</div>
+            <div style={{ fontSize:10, color:GRAY_L, marginBottom:6 }}>レシート上部に表示される英字タイトル。空欄の場合は自動変換されます。</div>
+            <div style={{ ...neuInset(4), borderRadius:12, padding:"2px 4px", marginBottom:14 }}>
+              <input value={fReceiptTitle} onChange={e=>setFReceiptTitle(e.target.value)}
+                placeholder="例：DINING OUT, GAME, SPORTS..."
+                style={{ width:"100%", padding:"10px 12px", background:"none", border:"none", outline:"none", fontSize:14, color:DARK, fontFamily:FONT, boxSizing:"border-box", textTransform:"uppercase" }}
+              />
+            </div>
+
+            {/* アイコン */}
             <div style={{ fontSize:10, color:GRAY, fontWeight:700, letterSpacing:"1.5px", marginBottom:10 }}>アイコン</div>
-            <IconPicker value={editingCat.cat.icon} onChange={icon=>updateCatIconLive(editingCat.gkey,editingCat.cat.id,icon)}/>
+            <IconPicker value={fIcon} onChange={setFIcon}/>
+
+            {/* カラー */}
             <div style={{ fontSize:10, color:GRAY, fontWeight:700, letterSpacing:"1.5px", margin:"14px 0 10px" }}>カラー</div>
-            <div style={{ display:"flex", gap:10, flexWrap:"wrap", marginBottom:4 }}>
+            <div style={{ display:"flex", gap:10, flexWrap:"wrap", marginBottom:20 }}>
               {COLORS.map(col=>(
-                <div key={col} onClick={()=>updateCatColor(editingCat.gkey,editingCat.cat.id,col)}
-                  style={{ width:32, height:32, borderRadius:99, background:col, cursor:"pointer",
-                    transform: editingCat.cat.color===col ? "scale(1.25)" : "scale(1)",
-                    boxShadow: editingCat.cat.color===col
-                      ? `0 0 0 3px ${BG}, 0 0 0 5px ${col}, 3px 3px 8px rgba(163,177,198,0.4)`
-                      : neuShadow(2),
-                    transition:"transform 0.15s ease, box-shadow 0.15s ease",
-                  }}/>
+                <div key={col} onClick={()=>setFColor(col)} style={{
+                  width:32, height:32, borderRadius:99, background:col, cursor:"pointer",
+                  transform: fColor===col ? "scale(1.3)" : "scale(1)",
+                  boxShadow: fColor===col ? `0 0 0 3px ${BG}, 0 0 0 5px ${col}` : neuShadow(2),
+                  transition:"transform 0.15s ease",
+                }}/>
               ))}
             </div>
-            <NeuBtn accent onClick={()=>setEditingCat(null)} style={{ width:"100%", textAlign:"center" }}>完了</NeuBtn>
+
+            {/* ボタン */}
+            <div style={{ display:"flex", gap:8 }}>
+              <NeuBtn small onClick={closeModal} style={{ flex:1, textAlign:"center" }}>キャンセル</NeuBtn>
+              <NeuBtn small onClick={handleSave} accent style={{ flex:2, textAlign:"center" }}>
+                {modal.mode==="add" ? "追加する" : "保存する"}
+              </NeuBtn>
+            </div>
           </div>
         </div>
       )}
 
+      {/* ── カテゴリ一覧 ── */}
       {groups.map(({key,label})=>(
         <div key={key} style={{ ...neuCard, marginBottom:16, padding:"20px" }}>
           <div style={{ fontSize:11, fontWeight:700, color:GRAY, marginBottom:14, letterSpacing:"1px" }}>{label}</div>
           <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-            {categories[key].map(cat=>(
+            {(categories[key]||[]).map(cat=>(
               <div key={cat.id} style={{ display:"flex", alignItems:"center", gap:10 }}>
-                <button onClick={()=>setEditingCat({gkey:key,cat})} style={{ width:42, height:42, borderRadius:13, background:cat.color+"1A", display:"flex", alignItems:"center", justifyContent:"center", border:"none", cursor:"pointer", flexShrink:0, boxShadow:`3px 3px 7px rgba(163,177,198,0.4),-3px -3px 7px rgba(255,255,255,0.9)` }}>
-                  <Icon3D type={cat.icon||"star"} size={28}/>
-                </button>
-                <div style={{ flex:1, fontSize:13, fontWeight:600, color:DARK }}>{cat.name}</div>
-                <div style={{ width:10, height:10, borderRadius:99, background:cat.color, flexShrink:0 }}/>
-                <button onClick={()=>setEditingCat({gkey:key,cat})} style={{ background:BG, border:"none", borderRadius:9, padding:"5px 10px", cursor:"pointer", color:TEAL2, fontSize:11, fontWeight:700, boxShadow:neuShadow(3) }}>編集</button>
+                <div style={{ width:40, height:40, borderRadius:12, background:(cat.color||"#94A3B8")+"1A", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                  <Icon3D type={cat.icon||"star"} size={26}/>
+                </div>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontSize:13, fontWeight:600, color:DARK }}>{cat.name}</div>
+                  {cat.receiptTitle && (
+                    <div style={{ fontSize:10, color:GRAY_L, marginTop:1 }}>{cat.receiptTitle}</div>
+                  )}
+                </div>
+                <div style={{ width:10, height:10, borderRadius:99, background:cat.color||"#94A3B8", flexShrink:0 }}/>
+                <button onClick={()=>openEdit(key,cat)} style={{ background:BG, border:"none", borderRadius:9, padding:"5px 10px", cursor:"pointer", color:TEAL2, fontSize:11, fontWeight:700, boxShadow:neuShadow(3), fontFamily:FONT }}>編集</button>
                 <button onClick={()=>deleteCat(key,cat.id)} style={{ background:BG, border:"none", borderRadius:9, width:28, height:28, cursor:"pointer", color:PINK, fontSize:11, display:"flex", alignItems:"center", justifyContent:"center", boxShadow:neuShadow(3) }}>✕</button>
               </div>
             ))}
           </div>
-
-          {editingGroup===key ? (
-            <div style={{ marginTop:16 }}>
-              <div style={{ fontSize:11, color:GRAY, fontWeight:700, letterSpacing:"1px", marginBottom:10 }}>アイコンを選択</div>
-              <IconPicker value={newIcon} onChange={setNewIcon}/>
-              <div style={{ ...neuInset(4), borderRadius:10, padding:"2px 4px", margin:"12px 0 10px" }}>
-                <input value={newName} onChange={e=>setNewName(e.target.value)} placeholder="カテゴリ名" style={{ width:"100%", padding:"10px 12px", background:"none", border:"none", outline:"none", fontSize:14, color:DARK, fontFamily:FONT, boxSizing:"border-box" }}/>
-              </div>
-              <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:12 }}>
-                {COLORS.map(c=><div key={c} onClick={()=>setSelectedColor(c)} style={{ width:22,height:22,borderRadius:99,background:c,cursor:"pointer",boxShadow:selectedColor===c?`0 0 0 3px ${BG},0 0 0 5px ${c},${neuShadow(2)}`:neuShadow(2) }}/>)}
-              </div>
-              <div style={{ display:"flex", gap:8 }}>
-                <NeuBtn small onClick={()=>setEditingGroup(null)} style={{ flex:1, textAlign:"center" }}>キャンセル</NeuBtn>
-                <NeuBtn small onClick={()=>addCat(key)} accent style={{ flex:2, textAlign:"center" }}>追加する</NeuBtn>
-              </div>
-            </div>
-          ) : (
-            <button onClick={()=>{setEditingGroup(key);setNewName("");setNewIcon("star");}} style={{ width:"100%", padding:"12px", borderRadius:12, marginTop:14, background:"none", border:`1.5px dashed rgba(148,163,184,0.5)`, cursor:"pointer", color:GRAY, fontSize:13, fontWeight:600, fontFamily:FONT }}>＋ カテゴリを追加</button>
-          )}
+          <button onClick={()=>openAdd(key)} style={{ width:"100%", padding:"12px", borderRadius:12, marginTop:14, background:"none", border:`1.5px dashed rgba(148,163,184,0.5)`, cursor:"pointer", color:GRAY, fontSize:13, fontWeight:600, fontFamily:FONT }}>
+            ＋ カテゴリを追加
+          </button>
         </div>
       ))}
     </div>
