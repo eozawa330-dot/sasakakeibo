@@ -1433,6 +1433,8 @@ function InputTab({ categories, onAdd }) {
             <div style={{ fontSize:12, color:GRAY_L }}>›</div>
           </button>
 
+          <Calculator onConfirm={handleConfirm}/>
+
           {/* メモ・日付入力モーダル */}
           {memoModal && (
             <div style={{ position:"fixed", inset:0, zIndex:600,
@@ -1475,7 +1477,6 @@ function InputTab({ categories, onAdd }) {
               </div>
             </div>
           )}
-          <Calculator onConfirm={handleConfirm}/>
         </>
       )}
     </div>
