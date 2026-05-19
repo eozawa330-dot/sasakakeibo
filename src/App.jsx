@@ -966,7 +966,6 @@ function NeuBtn({ children, onClick, accent, active, style={}, small=false }) {
 // ─── Calculator ─────────────────────────────────────────────────────────────
 function Calculator({ onConfirm }) {
   const [display, setDisplay] = useState("0");
-  const [pressed, setPressed] = useState(null);
 
   const press = k => setDisplay(p => {
     if (k==="⌫") return p.length<=1?"0":p.slice(0,-1);
@@ -1000,23 +999,19 @@ function Calculator({ onConfirm }) {
       <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10 }}>
         {keys.flat().map(k => {
           const isAC=k==="AC", isDel=k==="⌫";
-          const isP = pressed===k;
           return (
             <button key={k}
-              onPointerDown={()=>{ setPressed(k); press(k); }}
-              onPointerUp={()=>setPressed(null)}
-              onPointerLeave={()=>setPressed(null)}
+              onClick={()=>press(k)}
               style={{
-                background: isP ? "rgba(220,225,240,0.9)" : "rgba(255,255,255,0.72)",
+                background:"rgba(255,255,255,0.72)",
                 backdropFilter:"blur(10px)", WebkitBackdropFilter:"blur(10px)",
                 border:"1px solid rgba(255,255,255,0.8)", borderRadius:13,
                 padding:"16px 0", fontSize:20, fontWeight:600, fontFamily:FONT,
                 color:isAC?PINK:isDel?TEAL2:DARK, cursor:"pointer",
-                boxShadow: isP ? neuInsetShadow(3) : neuShadow(4),
-                transform: isP ? "scale(0.96)" : "scale(1)",
-                transition:"transform 0.08s ease, box-shadow 0.08s ease",
+                boxShadow:neuShadow(4),
                 WebkitTapHighlightColor:"transparent",
                 touchAction:"manipulation",
+                userSelect:"none",
               }}
             >{k}</button>
           );
@@ -1024,19 +1019,16 @@ function Calculator({ onConfirm }) {
       </div>
       {/* 登録ボタン */}
       <button
-        onPointerDown={()=>setPressed("reg")}
-        onPointerUp={()=>{ setPressed(null); handleRegister(); }}
-        onPointerLeave={()=>setPressed(null)}
+        onClick={handleRegister}
         style={{
           background: NOISE_GRAD,
           border:"1px solid rgba(255,255,255,0.8)", borderRadius:14,
           padding:"15px", fontSize:16, fontWeight:800, fontFamily:FONT,
           color:DARKER, cursor:"pointer", marginTop:4, letterSpacing:"0.5px",
-          boxShadow: pressed==="reg" ? neuInsetShadow(3) : NOISE_SHADOW,
-          transform: pressed==="reg" ? "scale(0.97)" : "scale(1)",
-          transition:"transform 0.08s ease",
+          boxShadow:NOISE_SHADOW,
           WebkitTapHighlightColor:"transparent",
           touchAction:"manipulation",
+          userSelect:"none",
         }}
       >登録する ✓</button>
     </div>
