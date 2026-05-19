@@ -873,7 +873,6 @@ const DEFAULT_CATEGORIES = {
     { id:"inc_2", name:"賞与",         icon:"medal",   color:"#F59E0B", subtractFromIncome:false },
     { id:"inc_3", name:"控除",         icon:"memo",    color:"#94A3B8", subtractFromIncome:true  },
     { id:"inc_4", name:"ふるさと納税", icon:"gift",    color:"#E879A0", subtractFromIncome:true  },
-    { id:"inc_5", name:"雑収入",       icon:"coin",   color:"#F59E0B" },
   ],
   fixed: [
     { id:"fix_1", name:"家賃",     icon:"house",        color:"#E879A0" },
@@ -965,72 +964,44 @@ function NeuBtn({ children, onClick, accent, active, style={}, small=false }) {
 
 // ─── Calculator ─────────────────────────────────────────────────────────────
 function Calculator({ onConfirm }) {
-  const displayRef = useRef("0");
-  const [displayVal, setDisplayVal] = useState("0");
-
-  const press = k => {
-    let p = displayRef.current;
-    let next;
-    if (k==="⌫") next = p.length<=1?"0":p.slice(0,-1);
-    else if (k==="AC") next = "0";
-    else if (p==="0") next = k;
-    else if (p.replace(".","").length>=9) next = p;
-    else next = p+k;
-    displayRef.current = next;
-    setDisplayVal(next);
-  };
-
-  const keys = [["7","8","9"],["4","5","6"],["1","2","3"],["AC","0","⌫"]];
-
-  const btnStyle = (isAC, isDel) => ({
-    background:"rgba(255,255,255,0.75)",
-    border:"1px solid rgba(255,255,255,0.85)", borderRadius:13,
-    padding:"16px 0", fontSize:20, fontWeight:600, fontFamily:FONT,
-    color:isAC?PINK:isDel?TEAL2:DARK, cursor:"pointer",
-    boxShadow:neuShadow(4), display:"block", width:"100%",
-    WebkitTapHighlightColor:"transparent", touchAction:"manipulation",
-    userSelect:"none", outline:"none",
+  const [display, setDisplay] = useState("0");
+  const press = k => setDisplay(p => {
+    if (k==="⌫") return p.length<=1?"0":p.slice(0,-1);
+    if (k==="AC") return "0";
+    if (k==="00") return p==="0"?"0":p+"00";
+    if (p==="0"&&k!==".") return k;
+    if (p.replace(".","").length>=9) return p;
+    return p+k;
   });
-
+  const keys = [["7","8","9"],["4","5","6"],["1","2","3"],["AC","0","⌫"]];
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:5 }}>
-      {/* 金額表示 */}
       <div style={{ ...neuInset(6), borderRadius:14, padding:"8px 16px", textAlign:"right", marginBottom:0, border:"1px solid rgba(255,255,255,0.35)" }}>
         <div style={{ fontSize:10, color:GRAY, fontWeight:700, letterSpacing:"1.5px", marginBottom:2 }}>金額</div>
         <div style={{ fontSize:32, fontWeight:900, color:DARK, letterSpacing:"-1px", fontVariantNumeric:"tabular-nums" }}>
-          {parseFloat(displayVal||"0").toLocaleString()}
+          {parseFloat(display||"0").toLocaleString()}
           <span style={{ fontSize:20, color:TEAL2, marginLeft:4, fontWeight:700 }}>円</span>
         </div>
       </div>
-      {/* キーパッド */}
       <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10 }}>
-        {keys.flat().map(k => (
-          <button key={k} type="button"
-            onClick={()=>press(k)}
-            style={btnStyle(k==="AC", k==="⌫")}
-          >{k}</button>
-        ))}
+        {keys.flat().map(k => {
+          const isAC=k==="AC", isDel=k==="⌫";
+          return (
+            <button key={k}
+              onMouseDown={e=>{e.currentTarget.style.boxShadow=neuInsetShadow(4);e.currentTarget.style.transform="scale(0.96)";}}
+              onMouseUp={e=>{e.currentTarget.style.boxShadow=neuShadow(5);e.currentTarget.style.transform="scale(1)";}}
+              onMouseLeave={e=>{e.currentTarget.style.boxShadow=neuShadow(5);e.currentTarget.style.transform="scale(1)";}}
+              onClick={()=>press(k)}
+              style={{ background:"rgba(255,255,255,0.18)", backdropFilter:"blur(10px)", WebkitBackdropFilter:"blur(10px)", border:"1px solid rgba(255,255,255,0.38)", borderRadius:13, padding:"13px 0", fontSize:19, fontWeight:600, fontFamily:FONT, color:isAC?PINK:isDel?TEAL2:DARK, cursor:"pointer", boxShadow:"0 4px 12px rgba(80,40,160,0.12)", transition:"all 0.1s ease" }}
+            >{k}</button>
+          );
+        })}
       </div>
-      {/* 登録ボタン */}
       <button
-        type="button"
-        onClick={()=>{
-          const v = parseFloat(displayRef.current);
-          if (v > 0) {
-            onConfirm(v);
-            displayRef.current = "0";
-            setDisplayVal("0");
-          }
-        }}
-        style={{
-          background:NOISE_GRAD,
-          border:"1px solid rgba(255,255,255,0.8)", borderRadius:14,
-          padding:"15px", fontSize:16, fontWeight:800, fontFamily:FONT,
-          color:DARKER, cursor:"pointer", marginTop:4, letterSpacing:"0.5px",
-          boxShadow:NOISE_SHADOW, display:"block", width:"100%",
-          WebkitTapHighlightColor:"transparent", touchAction:"manipulation",
-          userSelect:"none", outline:"none",
-        }}
+        onMouseDown={e=>{e.currentTarget.style.transform="scale(0.97)";e.currentTarget.style.boxShadow=`inset 2px 2px 8px rgba(0,0,0,0.2), 0 0 14px ${TEAL_GLOW}`;}}
+        onMouseUp={e=>{e.currentTarget.style.transform="scale(1)";e.currentTarget.style.boxShadow=ACCENT_SHADOW;}}
+        onClick={()=>{ const v=parseFloat(display); if(v>0)onConfirm(v); }}
+        style={{ background:NOISE_GRAD, border:"1px solid rgba(255,255,255,0.8)", borderRadius:14, padding:"13px", fontSize:15, fontWeight:800, fontFamily:FONT, color:DARKER, cursor:"pointer", marginTop:4, letterSpacing:"0.5px", boxShadow:NOISE_SHADOW, transition:"all 0.12s ease" }}
       >登録する ✓</button>
     </div>
   );
@@ -1212,7 +1183,7 @@ function Splash({ onDone }) {
 
 
 // ─── Receipt Modal ────────────────────────────────────────────────────────────
-function ReceiptModal({ record, catName, catIcon, onClose }) {
+function ReceiptModal({ record, catName, catIcon, onClose, customTitle }) {
   const bg = getReceiptBg(catName);
   const [visible, setVisible] = useState(false);
   useEffect(()=>{ setTimeout(()=>setVisible(true),30); },[]);
@@ -1225,7 +1196,7 @@ function ReceiptModal({ record, catName, catIcon, onClose }) {
   const dateLabel = `${parseInt(day)} ${months[parseInt(month)-1]} ${year}`;
   const receiptNo = "#"+year+month+day+"-"+barcodeVal.slice(0,4);
   const isIncome = record.type==="income";
-  const titleEn = getCatEn(catName);
+  const titleEn = customTitle || getCatEn(catName);
 
   // SVG barcode (simple visual bars)
   const bars = Array.from({length:52},(_,i)=>{
@@ -1366,7 +1337,6 @@ function InputTab({ categories, onAdd }) {
   const [memo, setMemo]             = useState("");
   const [customDate, setCustomDate] = useState("");
   const [toast, setToast]           = useState(null);
-  const [memoModal, setMemoModal]   = useState(false); // メモ・日付入力モーダル
   const [receipt, setReceipt]       = useState(null); // {record, catName, catIcon}
 
   const cats = mode==="income" ? categories.income : expenseType==="fixed" ? categories.fixed : categories.variable;
@@ -1374,23 +1344,23 @@ function InputTab({ categories, onAdd }) {
   const showToast = msg => { setToast(msg); setTimeout(()=>setToast(null), 2200); };
 
   const handleConfirm = amount => {
-    if (!amount || amount <= 0) return;
     const today=new Date();
     const todayStr=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
     const date = customDate || todayStr;
+    // 控除・ふるさと納税はsubtractFromIncome=trueなのでマイナス金額で保存
     const allIncomeCats = categories.income;
     const catDef = allIncomeCats.find(ct=>ct.id===selectedCat.id);
     const isSubtract = catDef?.subtractFromIncome === true;
+    // 控除・ふるさと納税は支出として記録（支出合計に加算）
     const recordType = isSubtract ? "variable" : mode==="income" ? "income" : expenseType;
-    const finalAmount = Math.abs(amount);
+    const finalAmount = Math.abs(amount); // 常に正の値で保存
     const newRecord = { id:"r"+Date.now(), type:recordType, categoryId:selectedCat.id, amount:finalAmount, date, memo };
     onAdd(newRecord);
-    const allCats = [...categories.income,...categories.fixed,...categories.variable];
-    const catFull = allCats.find(ct=>ct.id===selectedCat.id);
-    const customTitle = catFull?.receiptTitle || receiptTitles[selectedCat.name] || CAT_EN[selectedCat.name] || selectedCat.name.toUpperCase();
+    const allCats2 = [...categories.income,...categories.fixed,...categories.variable];
+    const catFull = allCats2.find(ct=>ct.id===selectedCat.id);
+    const customTitle = catFull?.receiptTitle || CAT_EN[selectedCat.name] || selectedCat.name.toUpperCase();
     setReceipt({ record:newRecord, catName:selectedCat.name, catIcon:selectedCat.icon||"star", customTitle });
-    showToast("登録したよん 🎉");
-    setStep("category"); setSelectedCat(null); setMemo(""); setCustomDate(""); setMemoModal(false);
+    setStep("category"); setSelectedCat(null); setMemo(""); setCustomDate("");
   };
 
   return (
@@ -1401,24 +1371,14 @@ function InputTab({ categories, onAdd }) {
           catName={receipt.catName}
           catIcon={receipt.catIcon}
           onClose={()=>setReceipt(null)}
+          customTitle={receipt.customTitle}
         />
       )}
       {toast && (
-        <div style={{
-          position:"fixed", top:40, left:"50%", transform:"translateX(-50%)",
-          background:"linear-gradient(135deg, #FFF0F6, #FFF8F0)",
-          border:"1.5px solid rgba(244,114,182,0.3)",
-          backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)",
-          color:PINK, borderRadius:99, padding:"13px 28px",
-          fontSize:15, fontWeight:800, zIndex:999, whiteSpace:"nowrap",
-          boxShadow:`0 8px 32px rgba(244,114,182,0.25), 0 2px 8px rgba(255,255,255,0.8)`,
-          letterSpacing:"0.3px", fontFamily:FONT,
-          animation:"toastIn 0.35s cubic-bezier(0.34,1.56,0.64,1)",
-        }}>
+        <div style={{ position:"fixed", top:24, left:"50%", transform:"translateX(-50%)", background:"linear-gradient(135deg, rgba(167,139,250,0.95), rgba(45,212,191,0.95))", backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)", color:DARK, borderRadius:99, padding:"12px 24px", fontSize:14, fontWeight:700, zIndex:999, whiteSpace:"nowrap", boxShadow:neuShadow(8) }}>
           {toast}
         </div>
       )}
-      <style>{`@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(-12px) scale(0.88)}to{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}}`}</style>
 
       {/* Mode toggle — NO emoji */}
       <div style={{ display:"flex", gap:10, marginBottom:22 }}>
@@ -1454,69 +1414,28 @@ function InputTab({ categories, onAdd }) {
               <div style={{ fontSize:16, fontWeight:800, color:DARK }}>{selectedCat.name}</div>
             </div>
           </div>
-          {/* メモ・日付 タップでモーダル表示 */}
-          <button onClick={()=>setMemoModal(true)} style={{
-            width:"100%", display:"flex", alignItems:"center", gap:10, marginBottom:6,
-            background:GLASS_BG, backdropFilter:"blur(12px)", WebkitBackdropFilter:"blur(12px)",
-            border:GLASS_BORDER, borderRadius:14, padding:"10px 14px",
-            cursor:"pointer", fontFamily:FONT, textAlign:"left",
-            boxShadow:neuShadow(4),
-          }}>
-            <div style={{ flex:1 }}>
-              <div style={{ fontSize:11, color:GRAY, marginBottom:2 }}>
-                {memo ? memo : <span style={{ color:GRAY_L }}>メモをこちらに入力してください</span>}
-              </div>
-              <div style={{ fontSize:10, color:customDate ? TEAL2 : GRAY_L }}>
-                {customDate ? `📅 ${customDate}` : "📅 日付を指定する（空欄=今日）"}
-              </div>
+          <div style={{ display:"flex", gap:6, marginBottom:4 }}>
+            {/* メモ欄 */}
+            <div style={{ ...neuInset(4), borderRadius:12, padding:"1px 4px", flex:1 }}>
+              <input
+                placeholder="メモをこちらに入力して下さい"
+                value={memo} onChange={e=>setMemo(e.target.value)}
+                style={{ width:"100%", padding:"8px 10px", background:"none", border:"none", outline:"none", fontSize:12, color:DARK, fontFamily:FONT, boxSizing:"border-box" }}
+              />
             </div>
-            <div style={{ fontSize:12, color:GRAY_L }}>›</div>
-          </button>
-
+            {/* 日付欄 */}
+            <div style={{ ...neuInset(4), borderRadius:12, padding:"1px 4px", position:"relative", display:"flex", alignItems:"center" }}>
+              {!customDate && (
+                <span style={{ position:"absolute", left:10, fontSize:11, color:GRAY_L, pointerEvents:"none", letterSpacing:"0.3px", fontFamily:FONT, whiteSpace:"nowrap" }}>YYYY/MM/DD</span>
+              )}
+              <input
+                type="date"
+                value={customDate} onChange={e=>setCustomDate(e.target.value)}
+                style={{ padding:"8px 8px", background:"none", border:"none", outline:"none", fontSize:12, color:customDate?DARK:"transparent", fontFamily:FONT, cursor:"pointer", width:128 }}
+              />
+            </div>
+          </div>
           <Calculator onConfirm={handleConfirm}/>
-
-          {/* メモ・日付入力モーダル */}
-          {memoModal && (
-            <div style={{ position:"fixed", inset:0, zIndex:600,
-              background:"rgba(200,205,230,0.65)", backdropFilter:"blur(12px)", WebkitBackdropFilter:"blur(12px)",
-              display:"flex", alignItems:"flex-end"
-            }} onClick={()=>setMemoModal(false)}>
-              <div onClick={e=>e.stopPropagation()} style={{
-                ...neuCard, width:"100%", borderRadius:"24px 24px 0 0",
-                padding:"24px 20px 120px",
-              }}>
-                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:18 }}>
-                  <div style={{ fontSize:14, fontWeight:800, color:DARKER }}>メモ・日付を入力</div>
-                  <button onClick={()=>setMemoModal(false)} style={{ background:"none", border:"none", fontSize:20, color:GRAY, cursor:"pointer", padding:"0 4px" }}>×</button>
-                </div>
-                {/* メモ */}
-                <div style={{ fontSize:10, color:GRAY, fontWeight:700, letterSpacing:"1.5px", marginBottom:6 }}>メモ（任意）</div>
-                <div style={{ ...neuInset(4), borderRadius:12, padding:"2px 4px", marginBottom:16 }}>
-                  <input
-                    autoFocus
-                    value={memo} onChange={e=>setMemo(e.target.value)}
-                    placeholder="メモをこちらに入力してください"
-                    style={{ width:"100%", padding:"12px 14px", background:"none", border:"none", outline:"none", fontSize:15, color:DARK, fontFamily:FONT, boxSizing:"border-box" }}
-                  />
-                </div>
-                {/* 日付 */}
-                <div style={{ fontSize:10, color:GRAY, fontWeight:700, letterSpacing:"1.5px", marginBottom:6 }}>日付（空欄=今日）</div>
-                <div style={{ ...neuInset(4), borderRadius:12, padding:"2px 4px", marginBottom:20 }}>
-                  <input
-                    type="date" value={customDate} onChange={e=>setCustomDate(e.target.value)}
-                    style={{ width:"100%", padding:"12px 14px", background:"none", border:"none", outline:"none", fontSize:15, color:DARK, fontFamily:FONT, boxSizing:"border-box" }}
-                  />
-                </div>
-                <button onClick={()=>setMemoModal(false)} style={{
-                  width:"100%", padding:"16px", borderRadius:16,
-                  border:"1px solid rgba(255,255,255,0.8)",
-                  background:NOISE_GRAD, fontSize:16, fontWeight:800,
-                  color:DARKER, cursor:"pointer", fontFamily:FONT,
-                  letterSpacing:"0.5px", boxShadow:NOISE_SHADOW,
-                }}>完了</button>
-              </div>
-            </div>
-          )}
         </>
       )}
     </div>
@@ -1525,8 +1444,8 @@ function InputTab({ categories, onAdd }) {
 
 // ─── Report Tab ─────────────────────────────────────────────────────────────
 function ReportTab({ records, categories, monthKey, onMonthChange }) {
-  const [selectedDay, setSelectedDay]   = useState(null);
-  const [reportView, setReportView]     = useState("overview");
+  const [selectedDay, setSelectedDay] = useState(null);
+  const [reportView, setReportView]   = useState("overview");
   const [expenseTab, setExpenseTab]     = useState("fixed"); // fixed | variable
 
   const allCats = [...categories.income, ...categories.fixed, ...categories.variable];
@@ -1539,23 +1458,22 @@ function ReportTab({ records, categories, monthKey, onMonthChange }) {
   const savingRate   = totalIncome > 0 ? Math.round(balance / totalIncome * 100) : 0;
   const isNow        = monthKey === currentMonthKey();
 
-  // 固定費・変動費それぞれのpieData
-  const makePieData = (type) => {
+  const makePieData = type => {
     const map = {};
-    monthRecs.filter(r => r.type === type).forEach(r => {
-      map[r.categoryId] = (map[r.categoryId] || 0) + r.amount;
+    monthRecs.filter(r=>r.type===type).forEach(r=>{
+      map[r.categoryId] = (map[r.categoryId]||0) + r.amount;
     });
-    return Object.entries(map).map(([id,value]) => {
+    return Object.entries(map).map(([id,value])=>{
       const cat = getCat(id);
       return { name:cat.name, value, color:cat.color, icon:cat.icon };
-    }).filter(d => d.value > 0).sort((a,b) => b.value - a.value);
+    }).filter(d=>d.value>0).sort((a,b)=>b.value-a.value);
   };
   const fixedPieData    = makePieData("fixed");
   const variablePieData = makePieData("variable");
-  const pieData = expenseTab === "fixed" ? fixedPieData : variablePieData;
+  const pieData  = expenseTab==="fixed" ? fixedPieData : variablePieData;
   const fixedTotal    = monthRecs.filter(r=>r.type==="fixed").reduce((s,r)=>s+r.amount,0);
   const variableTotal = monthRecs.filter(r=>r.type==="variable").reduce((s,r)=>s+r.amount,0);
-  const pieTotal = expenseTab === "fixed" ? fixedTotal : variableTotal;
+  const pieTotal = expenseTab==="fixed" ? fixedTotal : variableTotal;
 
   const lineData = [];
   for (let i = 5; i >= 0; i--) {
@@ -1731,7 +1649,7 @@ function ReportTab({ records, categories, monthKey, onMonthChange }) {
 
       {/* ── 支出内訳 Card ── */}
       <div style={{ ...neuCard, padding:"22px 20px 18px", marginBottom:16 }}>
-        {/* Section header */}
+        {/* ヘッダー */}
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14 }}>
           <div>
             <div style={{ fontSize:14, fontWeight:800, color:DARKER, letterSpacing:"-0.2px" }}>支出内訳</div>
@@ -1755,13 +1673,13 @@ function ReportTab({ records, categories, monthKey, onMonthChange }) {
               transition:"all 0.18s ease",
             }}>
               {l}
-              <span style={{ fontSize:10, marginLeft:4, fontWeight:600, opacity:0.7 }}>{fmt(total)}</span>
+              <span style={{ fontSize:10, marginLeft:4, opacity:0.7 }}>{fmt(total)}</span>
             </button>
           ))}
         </div>
 
         {pieData.length > 0 ? (<>
-          {/* Donut — centered, large */}
+          {/* Donut */}
           <div style={{ display:"flex", justifyContent:"center", marginBottom:24 }}>
             <div style={{ position:"relative", width:240, height:240, animation:"ringPop 0.6s cubic-bezier(0.34,1.56,0.64,1) both" }}>
               <div style={{ position:"absolute", inset:0, borderRadius:"50%", ...neuInset(8) }}/>
@@ -1773,13 +1691,10 @@ function ReportTab({ records, categories, monthKey, onMonthChange }) {
                     startAngle={90} endAngle={-270}
                     strokeWidth={0}
                   >
-                    {pieData.map((d,i) => (
-                      <Cell key={i} fill={d.color}/>
-                    ))}
+                    {pieData.map((d,i) => <Cell key={i} fill={d.color}/>)}
                   </Pie>
                 </PieChart>
               </ResponsiveContainer>
-              {/* Centre text */}
               <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", pointerEvents:"none" }}>
                 <div style={{ fontSize:9, color:GRAY, fontWeight:700, letterSpacing:"1.5px", marginBottom:4 }}>
                   {expenseTab==="fixed"?"固定費":"変動費"}
@@ -1792,22 +1707,15 @@ function ReportTab({ records, categories, monthKey, onMonthChange }) {
             </div>
           </div>
 
-          {/* Legend rows */}
+          {/* Legend */}
           <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
             {pieData.map((d,i) => {
               const pct = pieTotal ? Math.round(d.value/pieTotal*100) : 0;
               return (
                 <div key={d.name} style={{ display:"flex", alignItems:"center", gap:10 }}>
-                  {/* Icon badge */}
-                  <div style={{
-                    width:34, height:34, borderRadius:10, flexShrink:0,
-                    background:d.color+"18",
-                    display:"flex", alignItems:"center", justifyContent:"center",
-                    boxShadow:`2px 2px 6px rgba(180,190,220,0.4), -2px -2px 6px rgba(255,255,255,0.9)`,
-                  }}>
+                  <div style={{ width:34, height:34, borderRadius:10, flexShrink:0, background:d.color+"18", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:`2px 2px 6px rgba(180,190,220,0.4),-2px -2px 6px rgba(255,255,255,0.9)` }}>
                     <Icon3D type={d.icon||"star"} size={22}/>
                   </div>
-                  {/* Bar + text */}
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", marginBottom:4 }}>
                       <span style={{ fontSize:12, fontWeight:700, color:DARKER }}>{d.name}</span>
@@ -1817,13 +1725,7 @@ function ReportTab({ records, categories, monthKey, onMonthChange }) {
                       </div>
                     </div>
                     <div style={{ borderRadius:99, height:6, background:"rgba(200,210,230,0.3)", overflow:"hidden" }}>
-                      <div style={{
-                        height:"100%", borderRadius:99,
-                        background:`linear-gradient(90deg, ${d.color}77, ${d.color})`,
-                        width:`${pct}%`,
-                        transition:`width 0.8s cubic-bezier(0.34,1.1,0.64,1) ${i*0.06}s`,
-                        boxShadow:`0 0 6px ${d.color}44`,
-                      }}/>
+                      <div style={{ height:"100%", borderRadius:99, background:`linear-gradient(90deg,${d.color}77,${d.color})`, width:`${pct}%`, transition:`width 0.8s cubic-bezier(0.34,1.1,0.64,1) ${i*0.06}s`, boxShadow:`0 0 6px ${d.color}44` }}/>
                     </div>
                   </div>
                 </div>
@@ -2095,22 +1997,21 @@ function SettingsTab({ categories, setCategories }) {
   const COLORS = ["#F472B6","#2DD4BF","#34D399","#FBBF24","#A78BFA","#FB923C","#38BDF8","#F87171","#60A5FA","#C084FC","#10B981","#E879A0"];
   const groups = [{key:"income",label:"収入カテゴリ"},{key:"fixed",label:"固定費カテゴリ"},{key:"variable",label:"変動費カテゴリ"}];
 
-  // モーダルstate（追加 / 編集 兼用）
+  // モーダル state（追加・編集 共通）
   const [modal, setModal] = useState(null);
-  // modal = { mode:"add"|"edit", gkey, cat?:{id,name,icon,color,receiptTitle} }
-  // フォームstate
+  // modal = { mode:"add"|"edit", gkey, cat? }
   const [fName,         setFName]         = useState("");
+  const [fReceiptTitle, setFReceiptTitle] = useState("");
   const [fIcon,         setFIcon]         = useState("star");
   const [fColor,        setFColor]        = useState("#2DD4BF");
-  const [fReceiptTitle, setFReceiptTitle] = useState("");
 
-  const openAdd = (gk) => {
-    setFName(""); setFIcon("star"); setFColor("#2DD4BF"); setFReceiptTitle("");
+  const openAdd = gk => {
+    setFName(""); setFReceiptTitle(""); setFIcon("star"); setFColor("#2DD4BF");
     setModal({ mode:"add", gkey:gk });
   };
   const openEdit = (gk, cat) => {
-    setFName(cat.name); setFIcon(cat.icon||"star"); setFColor(cat.color||"#2DD4BF");
-    setFReceiptTitle(cat.receiptTitle||"");
+    setFName(cat.name||""); setFReceiptTitle(cat.receiptTitle||"");
+    setFIcon(cat.icon||"star"); setFColor(cat.color||"#2DD4BF");
     setModal({ mode:"edit", gkey:gk, cat });
   };
   const closeModal = () => setModal(null);
@@ -2120,69 +2021,65 @@ function SettingsTab({ categories, setCategories }) {
     if (modal.mode === "add") {
       setCategories(prev=>({...prev,[modal.gkey]:[...prev[modal.gkey],{
         id:modal.gkey+"_"+Date.now(), name:fName.trim(),
-        icon:fIcon, color:fColor, receiptTitle:fReceiptTitle.trim()||""
+        icon:fIcon, color:fColor, receiptTitle:fReceiptTitle.trim(),
       }]}));
     } else {
       setCategories(prev=>({...prev,[modal.gkey]:prev[modal.gkey].map(c=>
-        c.id===modal.cat.id ? {...c, name:fName.trim(), icon:fIcon, color:fColor, receiptTitle:fReceiptTitle.trim()||""} : c
+        c.id===modal.cat.id ? {...c, name:fName.trim(), icon:fIcon, color:fColor, receiptTitle:fReceiptTitle.trim().toUpperCase()} : c
       )}));
     }
     closeModal();
   };
-  const deleteCat = (gk,id) => setCategories(prev=>({...prev,[gk]:prev[gk].filter(c=>c.id!==id)}));
+  const deleteCat = (gk, id) => setCategories(prev=>({...prev,[gk]:prev[gk].filter(c=>c.id!==id)}));
 
   return (
     <div style={{ paddingBottom:110 }}>
 
-      {/* ── モーダル（追加 / 編集） ── */}
+      {/* ── ボトムシートモーダル ── */}
       {modal && (
-        <div style={{ position:"fixed", inset:0, zIndex:600,
-          background:"rgba(200,205,230,0.7)", backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)",
-          display:"flex", alignItems:"flex-end", justifyContent:"center", padding:"0 0 0 0"
-        }} onClick={closeModal}>
+        <div
+          style={{ position:"fixed", inset:0, zIndex:600, background:"rgba(180,190,220,0.55)", backdropFilter:"blur(14px)", WebkitBackdropFilter:"blur(14px)", display:"flex", alignItems:"flex-end" }}
+          onClick={closeModal}
+        >
           <div onClick={e=>e.stopPropagation()} style={{
-            ...neuCard, width:"100%", maxWidth:480,
-            borderRadius:"24px 24px 0 0", padding:"24px 20px 120px",
-            maxHeight:"88vh", overflowY:"auto",
+            ...neuCard, width:"100%", borderRadius:"24px 24px 0 0",
+            maxHeight:"85vh", overflowY:"auto",
+            padding:"22px 20px 120px",
           }}>
             {/* ヘッダー */}
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:18 }}>
-              <div style={{ fontSize:14, fontWeight:800, color:DARKER }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}>
+              <div style={{ fontSize:15, fontWeight:800, color:DARKER }}>
                 {modal.mode==="add" ? "カテゴリを追加" : "カテゴリを編集"}
               </div>
-              <button onClick={closeModal} style={{ background:"none", border:"none", fontSize:18, color:GRAY, cursor:"pointer", padding:"0 4px" }}>×</button>
+              <button onClick={closeModal} style={{ background:"none", border:"none", fontSize:20, color:GRAY, cursor:"pointer", lineHeight:1 }}>×</button>
             </div>
 
             {/* プレビュー */}
-            <div style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 16px", borderRadius:16, background:BG2, boxShadow:neuInsetShadow(4), marginBottom:18 }}>
-              <div style={{ width:48, height:48, borderRadius:14, background:fColor+"22", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                <Icon3D type={fIcon} size={32}/>
+            <div style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 14px", borderRadius:16, background:BG2, boxShadow:neuInsetShadow(4), marginBottom:16 }}>
+              <div style={{ width:44, height:44, borderRadius:14, background:fColor+"22", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                <Icon3D type={fIcon} size={30}/>
               </div>
-              <div>
+              <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ fontSize:13, fontWeight:800, color:DARKER }}>{fName||"カテゴリ名"}</div>
-                <div style={{ fontSize:11, color:fColor, fontWeight:600, marginTop:2 }}>
-                  {fReceiptTitle||"レシートタイトル（未設定）"}
+                <div style={{ fontSize:10, color:fColor, marginTop:2 }}>
+                  {fReceiptTitle||"（レシートタイトル未設定）"}
                 </div>
               </div>
             </div>
 
             {/* カテゴリ名 */}
             <div style={{ fontSize:10, color:GRAY, fontWeight:700, letterSpacing:"1.5px", marginBottom:6 }}>カテゴリ名</div>
-            <div style={{ ...neuInset(4), borderRadius:12, padding:"2px 4px", marginBottom:14 }}>
-              <input value={fName} onChange={e=>setFName(e.target.value)}
-                placeholder="例：外食、ゲームなど"
-                style={{ width:"100%", padding:"10px 12px", background:"none", border:"none", outline:"none", fontSize:14, color:DARK, fontFamily:FONT, boxSizing:"border-box" }}
-              />
+            <div style={{ ...neuInset(4), borderRadius:12, marginBottom:14 }}>
+              <input value={fName} onChange={e=>setFName(e.target.value)} placeholder="例：外食、交際費など"
+                style={{ width:"100%", padding:"11px 14px", background:"none", border:"none", outline:"none", fontSize:14, color:DARK, fontFamily:FONT, boxSizing:"border-box" }}/>
             </div>
 
-            {/* レシートタイトル（英字） */}
+            {/* レシートタイトル */}
             <div style={{ fontSize:10, color:GRAY, fontWeight:700, letterSpacing:"1.5px", marginBottom:4 }}>レシートタイトル（英字）</div>
-            <div style={{ fontSize:10, color:GRAY_L, marginBottom:6 }}>レシート上部に表示される英字タイトル。空欄の場合は自動変換されます。</div>
-            <div style={{ ...neuInset(4), borderRadius:12, padding:"2px 4px", marginBottom:14 }}>
-              <input value={fReceiptTitle} onChange={e=>setFReceiptTitle(e.target.value)}
-                placeholder="例：DINING OUT, GAME, SPORTS..."
-                style={{ width:"100%", padding:"10px 12px", background:"none", border:"none", outline:"none", fontSize:14, color:DARK, fontFamily:FONT, boxSizing:"border-box", textTransform:"uppercase" }}
-              />
+            <div style={{ fontSize:10, color:GRAY_L, marginBottom:6 }}>レシート上部に表示される英字。空欄の場合はカテゴリ名が表示されます。</div>
+            <div style={{ ...neuInset(4), borderRadius:12, marginBottom:14 }}>
+              <input value={fReceiptTitle} onChange={e=>setFReceiptTitle(e.target.value)} placeholder="例：DINING OUT / SOCIAL"
+                style={{ width:"100%", padding:"11px 14px", background:"none", border:"none", outline:"none", fontSize:14, color:DARK, fontFamily:FONT, boxSizing:"border-box", letterSpacing:"0.5px", textTransform:"uppercase" }}/>
             </div>
 
             {/* アイコン */}
@@ -2191,10 +2088,10 @@ function SettingsTab({ categories, setCategories }) {
 
             {/* カラー */}
             <div style={{ fontSize:10, color:GRAY, fontWeight:700, letterSpacing:"1.5px", margin:"14px 0 10px" }}>カラー</div>
-            <div style={{ display:"flex", gap:10, flexWrap:"wrap", marginBottom:20 }}>
+            <div style={{ display:"flex", gap:10, flexWrap:"wrap", marginBottom:22 }}>
               {COLORS.map(col=>(
                 <div key={col} onClick={()=>setFColor(col)} style={{
-                  width:32, height:32, borderRadius:99, background:col, cursor:"pointer",
+                  width:30, height:30, borderRadius:99, background:col, cursor:"pointer",
                   transform: fColor===col ? "scale(1.3)" : "scale(1)",
                   boxShadow: fColor===col ? `0 0 0 3px ${BG}, 0 0 0 5px ${col}` : neuShadow(2),
                   transition:"transform 0.15s ease",
@@ -2202,17 +2099,19 @@ function SettingsTab({ categories, setCategories }) {
               ))}
             </div>
 
-            {/* ボタン：固定で下部に表示 */}
-            <div style={{ display:"flex", gap:8, marginTop:8 }}>
+            {/* ボタン */}
+            <div style={{ display:"flex", gap:8 }}>
               <button onClick={closeModal} style={{
-                flex:1, padding:"14px 0", borderRadius:14, border:GLASS_BORDER,
-                background:GLASS_BG, color:DARK, fontSize:14, fontWeight:700,
-                cursor:"pointer", fontFamily:FONT, boxShadow:neuShadow(4),
+                flex:1, padding:"14px 0", borderRadius:14,
+                background:BG, border:GLASS_BORDER, color:DARK,
+                fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:FONT,
+                boxShadow:neuShadow(4),
               }}>キャンセル</button>
               <button onClick={handleSave} style={{
-                flex:2, padding:"14px 0", borderRadius:14, border:"1px solid rgba(255,255,255,0.8)",
-                background:NOISE_GRAD, color:DARKER, fontSize:14, fontWeight:800,
-                cursor:"pointer", fontFamily:FONT, boxShadow:NOISE_SHADOW, letterSpacing:"0.3px",
+                flex:2, padding:"14px 0", borderRadius:14,
+                background:NOISE_GRAD, border:"1px solid rgba(255,255,255,0.8)",
+                color:DARKER, fontSize:14, fontWeight:800,
+                cursor:"pointer", fontFamily:FONT, boxShadow:NOISE_SHADOW,
               }}>{modal.mode==="add" ? "追加する +" : "保存する ✓"}</button>
             </div>
           </div>
@@ -2231,9 +2130,7 @@ function SettingsTab({ categories, setCategories }) {
                 </div>
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ fontSize:13, fontWeight:600, color:DARK }}>{cat.name}</div>
-                  {cat.receiptTitle && (
-                    <div style={{ fontSize:10, color:GRAY_L, marginTop:1 }}>{cat.receiptTitle}</div>
-                  )}
+                  {cat.receiptTitle && <div style={{ fontSize:10, color:GRAY_L, marginTop:1 }}>{cat.receiptTitle}</div>}
                 </div>
                 <div style={{ width:10, height:10, borderRadius:99, background:cat.color||"#94A3B8", flexShrink:0 }}/>
                 <button onClick={()=>openEdit(key,cat)} style={{ background:BG, border:"none", borderRadius:9, padding:"5px 10px", cursor:"pointer", color:TEAL2, fontSize:11, fontWeight:700, boxShadow:neuShadow(3), fontFamily:FONT }}>編集</button>
@@ -2257,7 +2154,7 @@ export default function App() {
   const [monthKey,   setMonthKey]   = useState(currentMonthKey());
 
   // ── カテゴリバージョン：変更時にlocalStorageを強制リセット ──────────
-  const CATEGORY_VERSION = "v7-sasami"; // categories updated
+  const CATEGORY_VERSION = "v8-sasami"; // categories updated
  // ← カテゴリ変更のたびに番号を上げる
   // ── カテゴリのマージ更新（ユーザーのカスタムを消さずに新カテゴリを追加）──
   const storedVersion = (() => { try { return localStorage.getItem("kakeibo_cat_version"); } catch { return null; } })();
