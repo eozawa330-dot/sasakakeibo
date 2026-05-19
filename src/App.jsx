@@ -1441,6 +1441,54 @@ function InputTab({ categories, onAdd }) {
             </div>
           </div>
           <Calculator onConfirm={handleConfirm}/>
+
+          {/* ── メモ・日付入力モーダル ── */}
+          {detailModal && (
+            <div style={{ position:"fixed", inset:0, zIndex:600,
+              background:"rgba(200,205,230,0.65)", backdropFilter:"blur(12px)", WebkitBackdropFilter:"blur(12px)",
+              display:"flex", alignItems:"flex-end"
+            }} onClick={()=>setDetailModal(null)}>
+              <div onClick={e=>e.stopPropagation()} style={{
+                ...neuCard, width:"100%", borderRadius:"24px 24px 0 0",
+                padding:"24px 20px 120px",
+              }}>
+                {/* 金額確認 */}
+                <div style={{ textAlign:"center", marginBottom:20 }}>
+                  <div style={{ fontSize:11, color:GRAY, fontWeight:700, letterSpacing:"1.5px", marginBottom:4 }}>登録金額</div>
+                  <div style={{ fontSize:32, fontWeight:900, color:DARKER, letterSpacing:"-1px" }}>
+                    ¥{detailModal.amount.toLocaleString()}
+                    <span style={{ fontSize:14, color:GRAY, marginLeft:4 }}>円</span>
+                  </div>
+                  <div style={{ fontSize:12, color:TEAL2, fontWeight:700, marginTop:4 }}>{selectedCat?.name}</div>
+                </div>
+                {/* メモ */}
+                <div style={{ fontSize:10, color:GRAY, fontWeight:700, letterSpacing:"1.5px", marginBottom:6 }}>メモ（任意）</div>
+                <div style={{ ...neuInset(4), borderRadius:12, padding:"2px 4px", marginBottom:14 }}>
+                  <input
+                    value={memo} onChange={e=>setMemo(e.target.value)}
+                    placeholder="メモをこちらに入力してください"
+                    style={{ width:"100%", padding:"10px 12px", background:"none", border:"none", outline:"none", fontSize:14, color:DARK, fontFamily:FONT, boxSizing:"border-box" }}
+                  />
+                </div>
+                {/* 日付 */}
+                <div style={{ fontSize:10, color:GRAY, fontWeight:700, letterSpacing:"1.5px", marginBottom:6 }}>日付（空欄=今日）</div>
+                <div style={{ ...neuInset(4), borderRadius:12, padding:"2px 4px", marginBottom:20 }}>
+                  <input
+                    type="date" value={customDate} onChange={e=>setCustomDate(e.target.value)}
+                    style={{ width:"100%", padding:"10px 12px", background:"none", border:"none", outline:"none", fontSize:14, color:DARK, fontFamily:FONT, boxSizing:"border-box" }}
+                  />
+                </div>
+                {/* 登録ボタン */}
+                <button onClick={handleRegister} style={{
+                  width:"100%", padding:"16px", borderRadius:16,
+                  border:"1px solid rgba(255,255,255,0.8)",
+                  background:NOISE_GRAD, fontSize:16, fontWeight:800,
+                  color:DARKER, cursor:"pointer", fontFamily:FONT,
+                  letterSpacing:"0.5px", boxShadow:NOISE_SHADOW,
+                }}>登録する ✓</button>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
@@ -2066,7 +2114,7 @@ function SettingsTab({ categories, setCategories }) {
         }} onClick={closeModal}>
           <div onClick={e=>e.stopPropagation()} style={{
             ...neuCard, width:"100%", maxWidth:480,
-            borderRadius:"24px 24px 0 0", padding:"24px 20px 40px",
+            borderRadius:"24px 24px 0 0", padding:"24px 20px 120px",
             maxHeight:"88vh", overflowY:"auto",
           }}>
             {/* ヘッダー */}
@@ -2126,12 +2174,18 @@ function SettingsTab({ categories, setCategories }) {
               ))}
             </div>
 
-            {/* ボタン */}
-            <div style={{ display:"flex", gap:8 }}>
-              <NeuBtn small onClick={closeModal} style={{ flex:1, textAlign:"center" }}>キャンセル</NeuBtn>
-              <NeuBtn small onClick={handleSave} accent style={{ flex:2, textAlign:"center" }}>
-                {modal.mode==="add" ? "追加する" : "保存する"}
-              </NeuBtn>
+            {/* ボタン：固定で下部に表示 */}
+            <div style={{ display:"flex", gap:8, marginTop:8 }}>
+              <button onClick={closeModal} style={{
+                flex:1, padding:"14px 0", borderRadius:14, border:GLASS_BORDER,
+                background:GLASS_BG, color:DARK, fontSize:14, fontWeight:700,
+                cursor:"pointer", fontFamily:FONT, boxShadow:neuShadow(4),
+              }}>キャンセル</button>
+              <button onClick={handleSave} style={{
+                flex:2, padding:"14px 0", borderRadius:14, border:"1px solid rgba(255,255,255,0.8)",
+                background:NOISE_GRAD, color:DARKER, fontSize:14, fontWeight:800,
+                cursor:"pointer", fontFamily:FONT, boxShadow:NOISE_SHADOW, letterSpacing:"0.3px",
+              }}>{modal.mode==="add" ? "追加する +" : "保存する ✓"}</button>
             </div>
           </div>
         </div>
