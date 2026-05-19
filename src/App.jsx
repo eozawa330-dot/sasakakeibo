@@ -965,25 +965,32 @@ function NeuBtn({ children, onClick, accent, active, style={}, small=false }) {
 
 // ─── Calculator ─────────────────────────────────────────────────────────────
 function Calculator({ onConfirm }) {
-  const [display, setDisplay] = useState("0");
+  const displayRef = useRef("0");
+  const [displayVal, setDisplayVal] = useState("0");
 
-  const press = k => setDisplay(p => {
-    if (k==="⌫") return p.length<=1?"0":p.slice(0,-1);
-    if (k==="AC") return "0";
-    if (p==="0"&&k!==".") return k;
-    if (p.replace(".","").length>=9) return p;
-    return p+k;
-  });
-
-  const handleRegister = () => {
-    const v = parseFloat(display);
-    if (v > 0) {
-      onConfirm(v);
-      setDisplay("0");
-    }
+  const press = k => {
+    let p = displayRef.current;
+    let next;
+    if (k==="⌫") next = p.length<=1?"0":p.slice(0,-1);
+    else if (k==="AC") next = "0";
+    else if (p==="0") next = k;
+    else if (p.replace(".","").length>=9) next = p;
+    else next = p+k;
+    displayRef.current = next;
+    setDisplayVal(next);
   };
 
   const keys = [["7","8","9"],["4","5","6"],["1","2","3"],["AC","0","⌫"]];
+
+  const btnStyle = (isAC, isDel) => ({
+    background:"rgba(255,255,255,0.75)",
+    border:"1px solid rgba(255,255,255,0.85)", borderRadius:13,
+    padding:"16px 0", fontSize:20, fontWeight:600, fontFamily:FONT,
+    color:isAC?PINK:isDel?TEAL2:DARK, cursor:"pointer",
+    boxShadow:neuShadow(4), display:"block", width:"100%",
+    WebkitTapHighlightColor:"transparent", touchAction:"manipulation",
+    userSelect:"none", outline:"none",
+  });
 
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:5 }}>
@@ -991,44 +998,38 @@ function Calculator({ onConfirm }) {
       <div style={{ ...neuInset(6), borderRadius:14, padding:"8px 16px", textAlign:"right", marginBottom:0, border:"1px solid rgba(255,255,255,0.35)" }}>
         <div style={{ fontSize:10, color:GRAY, fontWeight:700, letterSpacing:"1.5px", marginBottom:2 }}>金額</div>
         <div style={{ fontSize:32, fontWeight:900, color:DARK, letterSpacing:"-1px", fontVariantNumeric:"tabular-nums" }}>
-          {parseFloat(display||"0").toLocaleString()}
+          {parseFloat(displayVal||"0").toLocaleString()}
           <span style={{ fontSize:20, color:TEAL2, marginLeft:4, fontWeight:700 }}>円</span>
         </div>
       </div>
       {/* キーパッド */}
       <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10 }}>
-        {keys.flat().map(k => {
-          const isAC=k==="AC", isDel=k==="⌫";
-          return (
-            <button key={k}
-              onClick={()=>press(k)}
-              style={{
-                background:"rgba(255,255,255,0.72)",
-                backdropFilter:"blur(10px)", WebkitBackdropFilter:"blur(10px)",
-                border:"1px solid rgba(255,255,255,0.8)", borderRadius:13,
-                padding:"16px 0", fontSize:20, fontWeight:600, fontFamily:FONT,
-                color:isAC?PINK:isDel?TEAL2:DARK, cursor:"pointer",
-                boxShadow:neuShadow(4),
-                WebkitTapHighlightColor:"transparent",
-                touchAction:"manipulation",
-                userSelect:"none",
-              }}
-            >{k}</button>
-          );
-        })}
+        {keys.flat().map(k => (
+          <button key={k} type="button"
+            onClick={()=>press(k)}
+            style={btnStyle(k==="AC", k==="⌫")}
+          >{k}</button>
+        ))}
       </div>
       {/* 登録ボタン */}
       <button
-        onClick={handleRegister}
+        type="button"
+        onClick={()=>{
+          const v = parseFloat(displayRef.current);
+          if (v > 0) {
+            onConfirm(v);
+            displayRef.current = "0";
+            setDisplayVal("0");
+          }
+        }}
         style={{
-          background: NOISE_GRAD,
+          background:NOISE_GRAD,
           border:"1px solid rgba(255,255,255,0.8)", borderRadius:14,
           padding:"15px", fontSize:16, fontWeight:800, fontFamily:FONT,
           color:DARKER, cursor:"pointer", marginTop:4, letterSpacing:"0.5px",
-          boxShadow:NOISE_SHADOW,
-          WebkitTapHighlightColor:"transparent",
-          touchAction:"manipulation",
-          userSelect:"none",
+          boxShadow:NOISE_SHADOW, display:"block", width:"100%",
+          WebkitTapHighlightColor:"transparent", touchAction:"manipulation",
+          userSelect:"none", outline:"none",
         }}
       >登録する ✓</button>
     </div>
