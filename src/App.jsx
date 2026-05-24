@@ -1380,20 +1380,21 @@ function InputTab({ categories, onAdd }) {
         </div>
       )}
 
-      {/* Mode toggle — NO emoji */}
-      <div style={{ display:"flex", gap:10, marginBottom:22 }}>
-        {[["income","収入"],["expense","支出"]].map(([v,l])=>(
-          <NeuBtn key={v} onClick={()=>{setMode(v);setStep("category");setSelectedCat(null);}} accent={mode===v} style={{ flex:1, textAlign:"center" }}>{l}</NeuBtn>
-        ))}
-      </div>
-
-      {mode==="expense" && (
-        <div style={{ display:"flex", gap:8, marginBottom:20 }}>
-          {[["fixed","固定費"],["variable","変動費"]].map(([v,l])=>(
-            <NeuBtn key={v} small onClick={()=>{setExpenseType(v);setStep("category");setSelectedCat(null);}} active={expenseType===v} style={{ flex:1, textAlign:"center", color:expenseType===v?TEAL2:GRAY }}>{l}</NeuBtn>
+      {/* Mode toggle — カテゴリ選択時のみ表示 */}
+      {step==="category" && (<>
+        <div style={{ display:"flex", gap:10, marginBottom:22 }}>
+          {[["income","収入"],["expense","支出"]].map(([v,l])=>(
+            <NeuBtn key={v} onClick={()=>{setMode(v);setStep("category");setSelectedCat(null);}} accent={mode===v} style={{ flex:1, textAlign:"center" }}>{l}</NeuBtn>
           ))}
         </div>
-      )}
+        {mode==="expense" && (
+          <div style={{ display:"flex", gap:8, marginBottom:20 }}>
+            {[["fixed","固定費"],["variable","変動費"]].map(([v,l])=>(
+              <NeuBtn key={v} small onClick={()=>{setExpenseType(v);setStep("category");setSelectedCat(null);}} active={expenseType===v} style={{ flex:1, textAlign:"center", color:expenseType===v?TEAL2:GRAY }}>{l}</NeuBtn>
+            ))}
+          </div>
+        )}
+      </>)}
 
       {step==="category" ? (
         <>
@@ -1420,7 +1421,7 @@ function InputTab({ categories, onAdd }) {
               <input
                 placeholder="メモをこちらに入力して下さい"
                 value={memo} onChange={e=>setMemo(e.target.value)}
-                style={{ width:"100%", padding:"8px 10px", background:"none", border:"none", outline:"none", fontSize:12, color:DARK, fontFamily:FONT, boxSizing:"border-box" }}
+                style={{ width:"100%", padding:"8px 10px", background:"none", border:"none", outline:"none", fontSize:16, color:DARK, fontFamily:FONT, boxSizing:"border-box" }}
               />
             </div>
             {/* 日付欄 */}
